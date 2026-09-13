@@ -19,11 +19,23 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Prepare Debug Keystore
+    - name: Prepare Gradle and Keystore
       run: |
-        # إنشاء ملف debug.keystore تلقائياً لتوقيع الـ APK
+        # التأكد من وجود gradlew
+        if [ ! -f "gradlew" ]; then
+          wget -q https://raw.githubusercontent.com/cortinico/kotlin-android-template/main/gradlew
+          chmod +x gradlew
+          mkdir -p gradle/wrapper
+          wget -q https://raw.githubusercontent.com/cortinico/kotlin-android-template/main/gradle/wrapper/gradle-wrapper.jar -O gradle/wrapper/gradle-wrapper.jar
+          wget -q https://raw.githubusercontent.com/cortinico/kotlin-android-template/main/gradle/wrapper/gradle-wrapper.properties -O gradle/wrapper/gradle-wrapper.properties
+        else
+          chmod +x gradlew
+        fi
+
+        # إنشاء ملف debug.keystore وتوزيعه
         keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-        chmod +x gradlew
+        mkdir -p app
+        cp debug.keystore app/debug.keystore
 
     - name: Build with Gradle
       run: ./gradlew assembleDebug -Pandroid.useAndroidX=true -Djava.awt.headless=true --no-daemon
