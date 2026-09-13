@@ -387,6 +387,13 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                                 viewModel.reorderHomeApps(index, index + 1)
                             }
                         },
+                        onMoveToDock = {
+                            if (settings.hapticFeedback) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                            viewModel.removeAppFromHome(app.packageName)
+                            viewModel.addAppToDock(app.packageName)
+                        },
                         onRemove = {
                             if (settings.hapticFeedback) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -556,6 +563,13 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                                     }
                                     viewModel.reorderDockApps(index, index + 1)
                                 }
+                            },
+                            onMoveToHome = {
+                                if (settings.hapticFeedback) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                                viewModel.removeAppFromDock(app.packageName)
+                                viewModel.addAppToHome(app.packageName)
                             },
                             onRemove = {
                                 if (settings.hapticFeedback) {
@@ -926,6 +940,7 @@ fun ReorderableHomeAppItem(
     onLongClick: () -> Unit,
     onMoveLeft: () -> Unit,
     onMoveRight: () -> Unit,
+    onMoveToDock: () -> Unit,
     onRemove: () -> Unit
 ) {
     var accumulatedDragX by remember { mutableFloatStateOf(0f) }
@@ -965,6 +980,12 @@ fun ReorderableHomeAppItem(
                                     accumulatedDragX = 0f
                                     visualOffsetX += 65f
                                     onMoveLeft()
+                                }
+                                
+                                if (accumulatedDragY > 150f) {
+                                    accumulatedDragY = 0f
+                                    visualOffsetY -= 150f
+                                    onMoveToDock()
                                 }
                             },
                             onDragEnd = { 
@@ -1039,42 +1060,6 @@ fun ReorderableHomeAppItem(
                     fontWeight = FontWeight.Medium
                 )
             }
-
-            // In Reorder mode: Arrow nudges for fine tactile control
-            if (isReordering) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (index > 0) {
-                        IconButton(
-                            onClick = onMoveLeft,
-                            modifier = Modifier.size(22.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Déplacer à gauche",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    if (index < totalCount - 1) {
-                        IconButton(
-                            onClick = onMoveRight,
-                            modifier = Modifier.size(22.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = "Déplacer à droite",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-            }
         }
 
         // In Reorder Mode: Top-Right Remove Badge (-)
@@ -1114,11 +1099,15 @@ fun ReorderableDockAppItem(
     onLongClick: () -> Unit,
     onMoveLeft: () -> Unit,
     onMoveRight: () -> Unit,
+    onMoveToHome: () -> Unit,
     onRemove: () -> Unit
 ) {
     var accumulatedDragX by remember { mutableFloatStateOf(0f) }
+    var accumulatedDragY by remember { mutableFloatStateOf(0f) }
     var visualOffsetX by remember { mutableFloatStateOf(0f) }
+    var visualOffsetY by remember { mutableFloatStateOf(0f) }
     val animatedOffsetX by animateFloatAsState(targetValue = visualOffsetX, label = "dock_reorder_x")
+    val animatedOffsetY by animateFloatAsState(targetValue = visualOffsetY, label = "dock_reorder_y")
 
     val themedColorFilter = if (themedIcon) {
         ColorFilter.tint(MaterialTheme.colorScheme.primary)
@@ -1129,7 +1118,7 @@ fun ReorderableDockAppItem(
     Box(
         modifier = Modifier
             .padding(horizontal = 4.dp)
-            .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
+            .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
             .rotate(if (isReordering) wobbleAngle else 0f)
             .then(
                 if (isReordering) {
@@ -1138,7 +1127,9 @@ fun ReorderableDockAppItem(
                             onDrag = { change, dragAmount ->
                                 change.consume()
                                 accumulatedDragX += dragAmount.x
+                                accumulatedDragY += dragAmount.y
                                 visualOffsetX += dragAmount.x
+                                visualOffsetY += dragAmount.y
                                 if (accumulatedDragX > 50f) {
                                     accumulatedDragX = 0f
                                     visualOffsetX -= 50f
@@ -1148,14 +1139,24 @@ fun ReorderableDockAppItem(
                                     visualOffsetX += 50f
                                     onMoveLeft()
                                 }
+                                
+                                if (accumulatedDragY < -150f) {
+                                    accumulatedDragY = 0f
+                                    visualOffsetY += 150f
+                                    onMoveToHome()
+                                }
                             },
                             onDragEnd = { 
                                 accumulatedDragX = 0f
+                                accumulatedDragY = 0f
                                 visualOffsetX = 0f
+                                visualOffsetY = 0f
                             },
                             onDragCancel = { 
                                 accumulatedDragX = 0f
+                                accumulatedDragY = 0f
                                 visualOffsetX = 0f
+                                visualOffsetY = 0f
                             }
                         )
                     }
