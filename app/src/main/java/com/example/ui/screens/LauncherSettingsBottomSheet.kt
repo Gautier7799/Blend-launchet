@@ -234,7 +234,85 @@ fun LauncherSettingsBottomSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Section 3: System & Actions
+            // Section 3: Gestes & Fonctionnalités Avancées (iOS & Android)
+            SettingsSectionTitle(title = "Gestes & Fonctionnalités Avancées (iOS & Android)")
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Double-tap to Sleep Toggle
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Lock,
+                        title = "Verrouillage par double pression",
+                        subtitle = "Double-tapez sur l'écran d'accueil pour éteindre l'écran (Conserve l'empreinte)",
+                        checked = settings.doubleTapToSleep,
+                        onCheckedChange = {
+                            viewModel.updateSettings(settings.copy(doubleTapToSleep = it))
+                            if (it && !viewModel.isAccessibilityServiceEnabled()) {
+                                viewModel.performSleep(context)
+                            }
+                        }
+                    )
+
+                    if (settings.doubleTapToSleep && !viewModel.isAccessibilityServiceEnabled()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { viewModel.performSleep(context) },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Activer le service d'accessibilité",
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Dynamic Island Toggle
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Circle,
+                        title = "Dynamic Island (Capsule iOS)",
+                        subtitle = "Afficher l'heure, la batterie et les raccourcis dans une capsule interactive",
+                        checked = settings.dynamicIslandEnabled,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(dynamicIslandEnabled = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Haptic Feedback Toggle
+                    SettingsSwitchRow(
+                        icon = Icons.Default.TouchApp,
+                        title = "Retour Haptique",
+                        subtitle = "Vibrations subtiles lors des appuis longs et des gestes",
+                        checked = settings.hapticFeedback,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(hapticFeedback = it)) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Section 4: System & Actions
             SettingsSectionTitle(title = "Système & Lanceur par défaut")
 
             Card(

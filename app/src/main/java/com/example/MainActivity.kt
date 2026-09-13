@@ -43,8 +43,11 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,6 +58,7 @@ import coil.compose.AsyncImage
 import com.example.domain.AppItem
 import com.example.ui.screens.AddAppsBottomSheet
 import com.example.ui.screens.AppActionBottomSheet
+import com.example.ui.screens.DynamicIslandWidget
 import com.example.ui.screens.LauncherSettingsBottomSheet
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodels.LauncherSettings
@@ -89,6 +93,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit) {
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val apps by viewModel.installedApps.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val homeAppPackages by viewModel.homeAppPackages.collectAsState()
@@ -111,9 +117,22 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
-            .pointerInput(Unit) {
+            .pointerInput(settings.doubleTapToSleep, settings.hapticFeedback) {
                 detectTapGestures(
-                    onLongPress = { isSettingsOpen = true }
+                    onDoubleTap = {
+                        if (settings.doubleTapToSleep) {
+                            if (settings.hapticFeedback) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                            viewModel.performSleep(context)
+                        }
+                    },
+                    onLongPress = {
+                        if (settings.hapticFeedback) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        isSettingsOpen = true
+                    }
                 )
             }
             .pointerInput(Unit) {
@@ -134,15 +153,30 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 64.dp, start = 16.dp, end = 16.dp)
+                .padding(top = if (settings.dynamicIslandEnabled) 36.dp else 64.dp, start = 16.dp, end = 16.dp)
         ) {
+            // iOS: Dynamic Island Pill Widget
+            if (settings.dynamicIslandEnabled) {
+                DynamicIslandWidget(
+                    onSearchClick = onSearchClick,
+                    onSettingsClick = { isSettingsOpen = true },
+                    onLockClick = {
+                        if (settings.hapticFeedback) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        viewModel.performSleep(context)
+                    },
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
+
             // Pixel: At A Glance & Search Bar
             AtAGlanceWidget(
                 onSearchClick = onSearchClick,
                 onSettingsClick = { isSettingsOpen = true }
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Home Screen Grid
             LazyVerticalGrid(

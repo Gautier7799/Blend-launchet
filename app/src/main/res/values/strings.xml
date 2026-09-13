@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Blend Launcher</string>
     <string name="crash_report">Crash Report</string>
+    <string name="accessibility_service_description">Permet à Blend Launcher de verrouiller l\'écran lors d\'un double appui tout en conservant le déverrouillage par empreinte digitale.</string>
 </resources>

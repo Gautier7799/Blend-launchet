@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.AppRepository
 import com.example.domain.AppItem
+import com.example.service.BlendAccessibilityService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,7 +21,10 @@ data class LauncherSettings(
     val gridColumns: Int = 4,
     val dockCount: Int = 4,
     val themedIcons: Boolean = false,
-    val dockOpacity: Float = 0.35f
+    val dockOpacity: Float = 0.35f,
+    val doubleTapToSleep: Boolean = true,
+    val dynamicIslandEnabled: Boolean = true,
+    val hapticFeedback: Boolean = true
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -48,7 +52,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             gridColumns = prefs.getInt("grid_columns", 4),
             dockCount = prefs.getInt("dock_count", 4),
             themedIcons = prefs.getBoolean("themed_icons", false),
-            dockOpacity = prefs.getFloat("dock_opacity", 0.35f)
+            dockOpacity = prefs.getFloat("dock_opacity", 0.35f),
+            doubleTapToSleep = prefs.getBoolean("double_tap_sleep", true),
+            dynamicIslandEnabled = prefs.getBoolean("dynamic_island", true),
+            hapticFeedback = prefs.getBoolean("haptic_feedback", true)
         )
     }
 
@@ -61,7 +68,22 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putInt("dock_count", newSettings.dockCount)
             .putBoolean("themed_icons", newSettings.themedIcons)
             .putFloat("dock_opacity", newSettings.dockOpacity)
+            .putBoolean("double_tap_sleep", newSettings.doubleTapToSleep)
+            .putBoolean("dynamic_island", newSettings.dynamicIslandEnabled)
+            .putBoolean("haptic_feedback", newSettings.hapticFeedback)
             .apply()
+    }
+
+    fun isAccessibilityServiceEnabled(): Boolean {
+        return BlendAccessibilityService.isServiceRunning()
+    }
+
+    fun performSleep(context: Context): Boolean {
+        val locked = BlendAccessibilityService.lockScreen()
+        if (!locked) {
+            BlendAccessibilityService.openAccessibilitySettings(context)
+        }
+        return locked
     }
 
     private fun loadHomeAppPackages(): List<String> {
