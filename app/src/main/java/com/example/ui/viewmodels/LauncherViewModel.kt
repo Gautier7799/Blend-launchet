@@ -45,7 +45,10 @@ data class LauncherSettings(
     val showDeviceCardWidget: Boolean = true,
     val showMusicWidget: Boolean = true,
     val showTasksWidget: Boolean = true,
-    val showAppShortcutsWidget: Boolean = true
+    val showAppShortcutsWidget: Boolean = true,
+    val wallpaperType: String = "emerald", // "system", "emerald", "dark_amoled", "twilight", "ocean", "glass", "custom"
+    val customWallpaperUri: String? = null,
+    val wallpaperDim: Float = 0.15f
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -94,7 +97,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             showDeviceCardWidget = prefs.getBoolean("show_device_card_widget", true),
             showMusicWidget = prefs.getBoolean("show_music_widget", true),
             showTasksWidget = prefs.getBoolean("show_tasks_widget", true),
-            showAppShortcutsWidget = prefs.getBoolean("show_app_shortcuts_widget", true)
+            showAppShortcutsWidget = prefs.getBoolean("show_app_shortcuts_widget", true),
+            wallpaperType = prefs.getString("wallpaper_type", "emerald") ?: "emerald",
+            customWallpaperUri = prefs.getString("custom_wallpaper_uri", null),
+            wallpaperDim = prefs.getFloat("wallpaper_dim", 0.15f)
         )
     }
 
@@ -170,6 +176,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putBoolean("show_music_widget", newSettings.showMusicWidget)
             .putBoolean("show_tasks_widget", newSettings.showTasksWidget)
             .putBoolean("show_app_shortcuts_widget", newSettings.showAppShortcutsWidget)
+            .putString("wallpaper_type", newSettings.wallpaperType)
+            .putString("custom_wallpaper_uri", newSettings.customWallpaperUri)
+            .putFloat("wallpaper_dim", newSettings.wallpaperDim)
             .apply()
     }
 
