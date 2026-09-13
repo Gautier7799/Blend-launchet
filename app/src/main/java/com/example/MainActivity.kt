@@ -56,11 +56,15 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import android.os.Build
+import androidx.activity.SystemBarStyle
 import coil.compose.AsyncImage
 import com.example.domain.AppItem
 import com.example.ui.screens.AddAppsBottomSheet
+import com.example.ui.screens.AiAssistantBottomSheet
 import com.example.ui.screens.AppActionBottomSheet
 import com.example.ui.screens.LauncherSettingsBottomSheet
+import com.example.ui.screens.TopWidgetsBar
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodels.LauncherSettings
 import com.example.ui.viewmodels.LauncherViewModel
@@ -72,16 +76,29 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        // Remove status and navigation bar scrims and shadows
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
+        }
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            ),
+            navigationBarStyle = SystemBarStyle.auto(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            )
+        )
+
         setContent {
             MyApplicationTheme {
-                BlendLauncherScreen(
-                    viewModel = viewModel,
-                    onSearchClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com"))
-                        startActivity(intent)
-                    }
-                )
+                BlendLauncherScreen(viewModel = viewModel)
             }
         }
     }
@@ -93,7 +110,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit) {
+fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val activity = context as? ComponentActivity
@@ -107,6 +124,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
     var isAddAppsOpen by remember { mutableStateOf(false) }
     var isReorderingMode by remember { mutableStateOf(false) }
     var selectedActionApp by remember { mutableStateOf<AppItem?>(null) }
+    var isAiAssistantOpen by remember { mutableStateOf(false) }
 
     // Fullscreen Immersive Mode: Hides top status bar and bottom navigation bar
     LaunchedEffect(settings.fullscreenMode, activity) {
@@ -233,13 +251,14 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                 }
             }
 
-            // Pixel: At A Glance & Search Bar
+            // Top Widgets Row (AI Assistant, Date, Weather, Battery, Clock - customizable from Settings)
             if (!isReorderingMode) {
-                AtAGlanceWidget(
-                    onSearchClick = onSearchClick,
+                TopWidgetsBar(
+                    settings = settings,
+                    onAiClick = { isAiAssistantOpen = true },
                     onSettingsClick = { isSettingsOpen = true }
                 )
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
             }
 
             // Home Screen Grid with dynamic reordering
@@ -259,6 +278,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                         isReordering = isReorderingMode,
                         wobbleAngle = if (index % 2 == 0) wobbleAngle else -wobbleAngle,
                         showLabel = settings.showLabels,
+                        showTextShadows = settings.showTextShadows,
                         iconSize = settings.iconSizeDp.dp,
                         themedIcon = settings.themedIcons,
                         onClick = {
@@ -333,12 +353,16 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                                     text = "Ajouter",
                                     fontSize = 11.sp,
                                     color = Color.White,
-                                    style = androidx.compose.ui.text.TextStyle(
-                                        shadow = androidx.compose.ui.graphics.Shadow(
-                                            color = Color.Black.copy(alpha = 0.7f),
-                                            blurRadius = 6f
+                                    style = if (settings.showTextShadows) {
+                                        androidx.compose.ui.text.TextStyle(
+                                            shadow = androidx.compose.ui.graphics.Shadow(
+                                                color = Color.Black.copy(alpha = 0.7f),
+                                                blurRadius = 6f
+                                            )
                                         )
-                                    ),
+                                    } else {
+                                        androidx.compose.ui.text.TextStyle()
+                                    },
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -365,15 +389,19 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                             )
                         )
                     )
-                    .border(
-                        width = 1.dp,
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.65f),
-                                Color.White.copy(alpha = 0.15f)
+                    .then(
+                        if (settings.showDockLines) {
+                            Modifier.border(
+                                width = 1.dp,
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.65f),
+                                        Color.White.copy(alpha = 0.15f)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(32.dp)
                             )
-                        ),
-                        shape = RoundedCornerShape(32.dp)
+                        } else Modifier
                     )
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center
@@ -513,94 +541,12 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                 onDismissRequest = { isSettingsOpen = false }
             )
         }
-    }
-}
 
-@Composable
-fun AtAGlanceWidget(
-    onSearchClick: () -> Unit,
-    onSettingsClick: () -> Unit
-) {
-    val dateFormat = SimpleDateFormat("EEEE, MMM d", Locale.getDefault())
-    val currentDate = dateFormat.format(Date())
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.Start
-    ) {
-        // Date Text with High-Contrast Shadow
-        Text(
-            text = currentDate,
-            color = Color.White,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(start = 8.dp, bottom = 14.dp),
-            style = androidx.compose.ui.text.TextStyle(
-                shadow = androidx.compose.ui.graphics.Shadow(
-                    color = Color.Black.copy(alpha = 0.65f),
-                    blurRadius = 8f
-                )
+        // --- AI Assistant Sheet ---
+        if (isAiAssistantOpen) {
+            AiAssistantBottomSheet(
+                onDismissRequest = { isAiAssistantOpen = false }
             )
-        )
-
-        // Glassmorphic Capsule Search Bar with Settings Gear
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp),
-            shape = RoundedCornerShape(27.dp),
-            color = Color.White.copy(alpha = 0.88f),
-            shadowElevation = 6.dp,
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    listOf(
-                        Color.White,
-                        Color.White.copy(alpha = 0.4f)
-                    )
-                )
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 18.dp, end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable { onSearchClick() },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = Color(0xFF3C4043),
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Search...",
-                        color = Color(0xFF5F6368),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Normal
-                    )
-                }
-
-                IconButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Paramètres du lanceur",
-                        tint = Color(0xFF3C4043),
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
         }
     }
 }
@@ -753,7 +699,7 @@ fun AppIconItem(
     app: AppItem,
     showLabel: Boolean = true,
     textColor: Color = Color.White,
-    shadow: Boolean = true,
+    shadow: Boolean = false,
     iconSize: Dp = 60.dp,
     themedIcon: Boolean = false,
     onClick: () -> Unit,
@@ -846,6 +792,7 @@ fun ReorderableHomeAppItem(
     isReordering: Boolean,
     wobbleAngle: Float,
     showLabel: Boolean,
+    showTextShadows: Boolean = false,
     iconSize: Dp,
     themedIcon: Boolean,
     onClick: () -> Unit,
@@ -930,12 +877,16 @@ fun ReorderableHomeAppItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
-                    style = androidx.compose.ui.text.TextStyle(
-                        shadow = androidx.compose.ui.graphics.Shadow(
-                            color = Color.Black.copy(alpha = 0.7f),
-                            blurRadius = 6f
+                    style = if (showTextShadows) {
+                        androidx.compose.ui.text.TextStyle(
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = Color.Black.copy(alpha = 0.7f),
+                                blurRadius = 6f
+                            )
                         )
-                    ),
+                    } else {
+                        androidx.compose.ui.text.TextStyle()
+                    },
                     fontWeight = FontWeight.Medium
                 )
             }

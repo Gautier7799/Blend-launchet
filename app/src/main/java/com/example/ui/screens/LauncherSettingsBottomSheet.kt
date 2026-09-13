@@ -234,7 +234,149 @@ fun LauncherSettingsBottomSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Section 3: Gestes & Fonctionnalités Avancées (iOS & Android)
+            // Section 3: Widgets de l'écran d'accueil
+            SettingsSectionTitle(title = "Widgets de l'écran d'accueil")
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // AI Widget Switch
+                    SettingsSwitchRow(
+                        icon = Icons.Default.AutoAwesome,
+                        title = "Assistant IA (Remplace la recherche)",
+                        subtitle = "Affiche l'icône IA intelligente pour Gemini et recherche vocale",
+                        checked = settings.showAiWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showAiWidget = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Date Widget Switch
+                    SettingsSwitchRow(
+                        icon = Icons.Default.CalendarToday,
+                        title = "Date & Calendrier",
+                        subtitle = "Affiche le widget date avec accès rapide à l'agenda",
+                        checked = settings.showDateWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showDateWidget = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Weather Widget Switch
+                    SettingsSwitchRow(
+                        icon = Icons.Default.WbSunny,
+                        title = "Météo en direct",
+                        subtitle = "Affiche la température et les prévisions météo",
+                        checked = settings.showWeatherWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showWeatherWidget = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Battery Widget Switch
+                    SettingsSwitchRow(
+                        icon = Icons.Default.BatteryChargingFull,
+                        title = "Niveau de Batterie",
+                        subtitle = "Indicateur en temps réel du pourcentage et de la charge",
+                        checked = settings.showBatteryWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showBatteryWidget = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Clock Widget Switch
+                    SettingsSwitchRow(
+                        icon = Icons.Default.AccessTime,
+                        title = "Horloge & Alarme",
+                        subtitle = "Affiche l'heure précise avec accès aux alarmes",
+                        checked = settings.showClockWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showClockWidget = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Flashlight Widget Switch
+                    SettingsSwitchRow(
+                        icon = Icons.Default.FlashOn,
+                        title = "Lampe Torche rapide",
+                        subtitle = "Allumer et éteindre la torche directement depuis l'écran",
+                        checked = settings.showTorchWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showTorchWidget = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Settings Shortcut Switch
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Settings,
+                        title = "Raccourci Paramètres",
+                        subtitle = "Bouton d'accès rapide aux réglages du lanceur",
+                        checked = settings.showSettingsWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showSettingsWidget = it)) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Section 4: Style épuré & Suppression des ombres et lignes
+            SettingsSectionTitle(title = "Apparence & Style épuré")
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Text Shadows Toggle
+                    SettingsSwitchRow(
+                        icon = Icons.Default.BlurOn,
+                        title = "Ombres sous le texte",
+                        subtitle = "Désactivez pour un texte parfaitement net sans contour flou noir",
+                        checked = settings.showTextShadows,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showTextShadows = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Dock Border Lines Toggle
+                    SettingsSwitchRow(
+                        icon = Icons.Default.BorderColor,
+                        title = "Lignes de contour du Dock",
+                        subtitle = "Désactivez pour un dock en verre pur sans lignes ni bordures",
+                        checked = settings.showDockLines,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showDockLines = it)) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Section 5: Gestes & Fonctionnalités Avancées (iOS & Android)
             SettingsSectionTitle(title = "Gestes & Fonctionnalités Avancées (iOS & Android)")
 
             Card(

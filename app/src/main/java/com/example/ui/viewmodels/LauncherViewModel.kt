@@ -26,7 +26,16 @@ data class LauncherSettings(
     val dynamicIslandEnabled: Boolean = false,
     val hapticFeedback: Boolean = true,
     val fullscreenMode: Boolean = false,
-    val hideDrawerHeader: Boolean = false
+    val hideDrawerHeader: Boolean = false,
+    val showAiWidget: Boolean = true,
+    val showDateWidget: Boolean = true,
+    val showWeatherWidget: Boolean = true,
+    val showBatteryWidget: Boolean = true,
+    val showClockWidget: Boolean = false,
+    val showTorchWidget: Boolean = false,
+    val showSettingsWidget: Boolean = true,
+    val showTextShadows: Boolean = false,
+    val showDockLines: Boolean = false
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -62,7 +71,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             dynamicIslandEnabled = false,
             hapticFeedback = prefs.getBoolean("haptic_feedback", true),
             fullscreenMode = prefs.getBoolean("fullscreen_mode", false),
-            hideDrawerHeader = prefs.getBoolean("hide_drawer_header", false)
+            hideDrawerHeader = prefs.getBoolean("hide_drawer_header", false),
+            showAiWidget = prefs.getBoolean("show_ai_widget", true),
+            showDateWidget = prefs.getBoolean("show_date_widget", true),
+            showWeatherWidget = prefs.getBoolean("show_weather_widget", true),
+            showBatteryWidget = prefs.getBoolean("show_battery_widget", true),
+            showClockWidget = prefs.getBoolean("show_clock_widget", false),
+            showTorchWidget = prefs.getBoolean("show_torch_widget", false),
+            showSettingsWidget = prefs.getBoolean("show_settings_widget", true),
+            showTextShadows = prefs.getBoolean("show_text_shadows", false),
+            showDockLines = prefs.getBoolean("show_dock_lines", false)
         )
     }
 
@@ -80,6 +98,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putBoolean("haptic_feedback", newSettings.hapticFeedback)
             .putBoolean("fullscreen_mode", newSettings.fullscreenMode)
             .putBoolean("hide_drawer_header", newSettings.hideDrawerHeader)
+            .putBoolean("show_ai_widget", newSettings.showAiWidget)
+            .putBoolean("show_date_widget", newSettings.showDateWidget)
+            .putBoolean("show_weather_widget", newSettings.showWeatherWidget)
+            .putBoolean("show_battery_widget", newSettings.showBatteryWidget)
+            .putBoolean("show_clock_widget", newSettings.showClockWidget)
+            .putBoolean("show_torch_widget", newSettings.showTorchWidget)
+            .putBoolean("show_settings_widget", newSettings.showSettingsWidget)
+            .putBoolean("show_text_shadows", newSettings.showTextShadows)
+            .putBoolean("show_dock_lines", newSettings.showDockLines)
             .apply()
     }
 
