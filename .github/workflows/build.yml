@@ -19,15 +19,14 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Make Gradlew Executable
+    - name: Prepare Debug Keystore
       run: |
-        if [ ! -f "gradlew" ]; then
-          gradle wrapper
-        fi
+        # إنشاء ملف debug.keystore تلقائياً لتوقيع الـ APK
+        keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
         chmod +x gradlew
 
     - name: Build with Gradle
-      run: ./gradlew assembleDebug -Pandroid.useAndroidX=true --no-daemon
+      run: ./gradlew assembleDebug -Pandroid.useAndroidX=true -Djava.awt.headless=true --no-daemon
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
