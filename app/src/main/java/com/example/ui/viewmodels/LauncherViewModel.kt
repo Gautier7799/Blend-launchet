@@ -3,6 +3,7 @@ package com.example.ui.viewmodels
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -33,6 +34,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _settings = MutableStateFlow(loadSettings())
     val settings: StateFlow<LauncherSettings> = _settings.asStateFlow()
 
+    private val _homeAppPackages = MutableStateFlow<List<String>>(loadHomeAppPackages())
+    val homeAppPackages: StateFlow<List<String>> = _homeAppPackages.asStateFlow()
+
     init {
         loadApps()
     }
@@ -60,9 +64,59 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .apply()
     }
 
+    private fun loadHomeAppPackages(): List<String> {
+        val raw = prefs.getString("home_app_packages", null) ?: return emptyList()
+        return raw.split(",").filter { it.isNotBlank() }
+    }
+
+    private fun saveHomeAppPackages(list: List<String>) {
+        _homeAppPackages.value = list
+        prefs.edit().putString("home_app_packages", list.joinToString(",")).apply()
+    }
+
+    fun addAppToHome(packageName: String) {
+        val current = _homeAppPackages.value.toMutableList()
+        if (!current.contains(packageName)) {
+            current.add(packageName)
+            saveHomeAppPackages(current)
+        }
+    }
+
+    fun removeAppFromHome(packageName: String) {
+        val current = _homeAppPackages.value.toMutableList()
+        if (current.remove(packageName)) {
+            saveHomeAppPackages(current)
+        }
+    }
+
+    fun moveAppOnHome(packageName: String, step: Int) {
+        val current = _homeAppPackages.value.toMutableList()
+        val index = current.indexOf(packageName)
+        if (index == -1) return
+        val newIndex = index + step
+        if (newIndex in 0 until current.size) {
+            current.removeAt(index)
+            current.add(newIndex, packageName)
+            saveHomeAppPackages(current)
+        }
+    }
+
+    fun isAppOnHome(packageName: String): Boolean {
+        return _homeAppPackages.value.contains(packageName)
+    }
+
     fun loadApps() {
         viewModelScope.launch {
-            _installedApps.value = repository.getInstalledApps()
+            val apps = repository.getInstalledApps()
+            _installedApps.value = apps
+
+            // If home apps list was never saved, initialize it with first non-dock apps
+            if (_homeAppPackages.value.isEmpty() && apps.isNotEmpty()) {
+                val initialHome = apps.drop(settings.value.dockCount)
+                    .take(settings.value.gridColumns * 3)
+                    .map { it.packageName }
+                saveHomeAppPackages(initialHome)
+            }
         }
     }
 
@@ -72,6 +126,17 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         if (launchIntent != null) {
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             getApplication<Application>().startActivity(launchIntent)
+        }
+    }
+
+    fun openAppInfo(context: Context, packageName: String) {
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", packageName, null)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
         }
     }
 

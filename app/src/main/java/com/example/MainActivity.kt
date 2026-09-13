@@ -14,9 +14,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -28,6 +30,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -50,6 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.domain.AppItem
+import com.example.ui.screens.AddAppsBottomSheet
+import com.example.ui.screens.AppActionBottomSheet
 import com.example.ui.screens.LauncherSettingsBottomSheet
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodels.LauncherSettings
@@ -86,14 +91,20 @@ class MainActivity : ComponentActivity() {
 fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit) {
     val apps by viewModel.installedApps.collectAsState()
     val settings by viewModel.settings.collectAsState()
+    val homeAppPackages by viewModel.homeAppPackages.collectAsState()
+
     var isDrawerOpen by remember { mutableStateOf(false) }
     var isSettingsOpen by remember { mutableStateOf(false) }
+    var isAddAppsOpen by remember { mutableStateOf(false) }
+    var selectedActionApp by remember { mutableStateOf<AppItem?>(null) }
 
-    val dockApps = apps.take(settings.dockCount)
-    val homeApps = if (apps.size > settings.dockCount) {
-        apps.drop(settings.dockCount).take(settings.gridColumns * 3)
-    } else {
-        emptyList()
+    val dockApps = remember(apps, settings.dockCount) {
+        apps.take(settings.dockCount)
+    }
+
+    val homeApps = remember(homeAppPackages, apps) {
+        val appMap = apps.associateBy { it.packageName }
+        homeAppPackages.mapNotNull { appMap[it] }
     }
 
     Box(
@@ -145,8 +156,54 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                         showLabel = settings.showLabels,
                         iconSize = settings.iconSizeDp.dp,
                         themedIcon = settings.themedIcons,
-                        onClick = { viewModel.launchApp(app.packageName) }
+                        onClick = { viewModel.launchApp(app.packageName) },
+                        onLongClick = { selectedActionApp = app }
                     )
+                }
+
+                // Add Apps "+" Button Slot
+                item {
+                    Column(
+                        modifier = Modifier
+                            .padding(6.dp)
+                            .clickable { isAddAppsOpen = true },
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(settings.iconSizeDp.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color.White.copy(alpha = 0.22f))
+                                .border(
+                                    width = 1.dp,
+                                    color = Color.White.copy(alpha = 0.45f),
+                                    shape = RoundedCornerShape(18.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Ajouter",
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        if (settings.showLabels) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Ajouter",
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                style = androidx.compose.ui.text.TextStyle(
+                                    shadow = androidx.compose.ui.graphics.Shadow(
+                                        color = Color.Black.copy(alpha = 0.7f),
+                                        blurRadius = 6f
+                                    )
+                                ),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -192,7 +249,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                             showLabel = false,
                             iconSize = (settings.iconSizeDp - 4).dp,
                             themedIcon = settings.themedIcons,
-                            onClick = { viewModel.launchApp(app.packageName) }
+                            onClick = { viewModel.launchApp(app.packageName) },
+                            onLongClick = { selectedActionApp = app }
                         )
                     }
                 }
@@ -216,8 +274,33 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                 apps = apps,
                 settings = settings,
                 onAppClick = { viewModel.launchApp(it) },
+                onAppLongClick = { selectedActionApp = it },
                 onClose = { isDrawerOpen = false },
                 onSettingsClick = { isSettingsOpen = true }
+            )
+        }
+
+        // --- App Action Bottom Sheet (Move / Remove / Add / Info) ---
+        selectedActionApp?.let { app ->
+            val homeIndex = homeAppPackages.indexOf(app.packageName)
+            val isOnHome = homeIndex != -1
+            AppActionBottomSheet(
+                app = app,
+                viewModel = viewModel,
+                isOnHome = isOnHome,
+                canMoveLeft = isOnHome && homeIndex > 0,
+                canMoveRight = isOnHome && homeIndex < homeAppPackages.size - 1,
+                onDismissRequest = { selectedActionApp = null }
+            )
+        }
+
+        // --- Add Apps Bottom Sheet ---
+        if (isAddAppsOpen) {
+            AddAppsBottomSheet(
+                viewModel = viewModel,
+                apps = apps,
+                homeAppPackages = homeAppPackages,
+                onDismissRequest = { isAddAppsOpen = false }
             )
         }
 
@@ -326,6 +409,7 @@ fun AppDrawer(
     apps: List<AppItem>,
     settings: LauncherSettings,
     onAppClick: (String) -> Unit,
+    onAppLongClick: (AppItem) -> Unit,
     onClose: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
@@ -440,7 +524,8 @@ fun AppDrawer(
                         showLabel = settings.showLabels,
                         iconSize = settings.iconSizeDp.dp,
                         themedIcon = settings.themedIcons,
-                        onClick = { onAppClick(app.packageName) }
+                        onClick = { onAppClick(app.packageName) },
+                        onLongClick = { onAppLongClick(app) }
                     )
                 }
             }
@@ -448,6 +533,7 @@ fun AppDrawer(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppIconItem(
     app: AppItem,
@@ -456,7 +542,8 @@ fun AppIconItem(
     shadow: Boolean = true,
     iconSize: Dp = 60.dp,
     themedIcon: Boolean = false,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -479,10 +566,11 @@ fun AppIconItem(
         modifier = Modifier
             .padding(6.dp)
             .scale(scale)
-            .clickable(
+            .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick
+                onClick = onClick,
+                onLongClick = onLongClick
             ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
