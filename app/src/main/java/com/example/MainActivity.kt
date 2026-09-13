@@ -8,12 +8,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -26,12 +32,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -115,16 +124,33 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
             }
         }
 
-        // --- iOS: Glassmorphism Dock ---
+        // --- iOS: Ultra-Premium Glassmorphism Dock ---
         if (!isDrawerOpen) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 24.dp, start = 16.dp, end = 16.dp)
                     .fillMaxWidth()
-                    .height(90.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(Color.White.copy(alpha = 0.3f))
+                    .height(94.dp)
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.35f),
+                                Color.White.copy(alpha = 0.18f)
+                            )
+                        )
+                    )
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.65f),
+                                Color.White.copy(alpha = 0.15f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(32.dp)
+                    )
                     .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -137,6 +163,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                         AppIconItem(
                             app = app,
                             showLabel = false,
+                            iconSize = 56.dp,
                             onClick = { viewModel.launchApp(app.packageName) }
                         )
                     }
@@ -171,47 +198,58 @@ fun AtAGlanceWidget(onSearchClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start
     ) {
-        // Date Text
+        // Date Text with High-Contrast Shadow
         Text(
             text = currentDate,
             color = Color.White,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(start = 8.dp, bottom = 16.dp),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 8.dp, bottom = 14.dp),
             style = androidx.compose.ui.text.TextStyle(
                 shadow = androidx.compose.ui.graphics.Shadow(
-                    color = Color.Black.copy(alpha = 0.5f),
-                    blurRadius = 4f
+                    color = Color.Black.copy(alpha = 0.65f),
+                    blurRadius = 8f
                 )
             )
         )
 
-        // Pixel-style Search Bar
+        // Glassmorphic Capsule Search Bar
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
+                .height(54.dp)
                 .clickable { onSearchClick() },
-            shape = RoundedCornerShape(26.dp),
-            color = Color.White.copy(alpha = 0.9f),
-            shadowElevation = 4.dp
+            shape = RoundedCornerShape(27.dp),
+            color = Color.White.copy(alpha = 0.88f),
+            shadowElevation = 6.dp,
+            border = androidx.compose.foundation.BorderStroke(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    listOf(
+                        Color.White,
+                        Color.White.copy(alpha = 0.4f)
+                    )
+                )
+            )
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
-                    tint = Color.Gray
+                    tint = Color(0xFF3C4043),
+                    modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = "Search...",
-                    color = Color.Gray,
-                    fontSize = 16.sp
+                    color = Color(0xFF5F6368),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Normal
                 )
             }
         }
@@ -260,20 +298,37 @@ fun AppIconItem(
     showLabel: Boolean = true,
     textColor: Color = Color.White,
     shadow: Boolean = true,
+    iconSize: Dp = 60.dp,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.88f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "icon_press_scale"
+    )
+
     Column(
         modifier = Modifier
-            .padding(8.dp)
-            .clickable(onClick = onClick),
+            .padding(6.dp)
+            .scale(scale)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AsyncImage(
             model = app.icon,
             contentDescription = app.label,
             modifier = Modifier
-                .size(60.dp)
-                .clip(RoundedCornerShape(16.dp)),
+                .size(iconSize)
+                .clip(RoundedCornerShape(18.dp)),
             contentScale = ContentScale.Crop
         )
         if (showLabel) {
@@ -281,14 +336,14 @@ fun AppIconItem(
             val textStyle = if (shadow) {
                 androidx.compose.ui.text.TextStyle(
                     shadow = androidx.compose.ui.graphics.Shadow(
-                        color = Color.Black.copy(alpha = 0.5f),
-                        blurRadius = 4f
+                        color = Color.Black.copy(alpha = 0.7f),
+                        blurRadius = 6f
                     )
                 )
             } else {
                 androidx.compose.ui.text.TextStyle()
             }
-            
+
             Text(
                 text = app.label,
                 fontSize = 11.sp,
@@ -296,7 +351,8 @@ fun AppIconItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                style = textStyle
+                style = textStyle,
+                fontWeight = FontWeight.Medium
             )
         }
     }
