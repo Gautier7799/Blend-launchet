@@ -53,6 +53,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -444,54 +446,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                         }
                     }
 
-                    // Manage / Add Widgets Button Slot
-                    item {
-                        Column(
-                            modifier = Modifier
-                                .padding(6.dp)
-                                .clickable { isManageWidgetsOpen = true },
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(settings.iconSizeDp.dp)
-                                    .clip(RoundedCornerShape(18.dp))
-                                    .background(Color.White.copy(alpha = 0.22f))
-                                    .border(
-                                        width = 1.dp,
-                                        color = Color.White.copy(alpha = 0.45f),
-                                        shape = RoundedCornerShape(18.dp)
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Widgets,
-                                    contentDescription = "Widgets",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(26.dp)
-                                )
-                            }
-                            if (settings.showLabels) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "Widgets",
-                                    fontSize = 11.sp,
-                                    color = Color.White,
-                                    style = if (settings.showTextShadows) {
-                                        androidx.compose.ui.text.TextStyle(
-                                            shadow = androidx.compose.ui.graphics.Shadow(
-                                                color = Color.Black.copy(alpha = 0.7f),
-                                                blurRadius = 6f
-                                            )
-                                        )
-                                    } else {
-                                        androidx.compose.ui.text.TextStyle()
-                                    },
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
+                    // Manage / Add Widgets Button Slot removed as per user request
                 }
             }
         }
@@ -697,7 +652,11 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             LauncherSettingsBottomSheet(
                 viewModel = viewModel,
                 settings = settings,
-                onDismissRequest = { isSettingsOpen = false }
+                onDismissRequest = { isSettingsOpen = false },
+                onManageWidgetsClick = {
+                    isSettingsOpen = false
+                    isManageWidgetsOpen = true
+                }
             )
         }
 
@@ -970,6 +929,11 @@ fun ReorderableHomeAppItem(
     onRemove: () -> Unit
 ) {
     var accumulatedDragX by remember { mutableFloatStateOf(0f) }
+    var accumulatedDragY by remember { mutableFloatStateOf(0f) }
+    var visualOffsetX by remember { mutableFloatStateOf(0f) }
+    var visualOffsetY by remember { mutableFloatStateOf(0f) }
+    val animatedOffsetX by animateFloatAsState(targetValue = visualOffsetX, label = "home_reorder_x")
+    val animatedOffsetY by animateFloatAsState(targetValue = visualOffsetY, label = "home_reorder_y")
 
     val themedColorFilter = if (themedIcon) {
         ColorFilter.tint(MaterialTheme.colorScheme.primary)
@@ -980,6 +944,7 @@ fun ReorderableHomeAppItem(
     Box(
         modifier = Modifier
             .padding(6.dp)
+            .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
             .rotate(if (isReordering) wobbleAngle else 0f)
             .then(
                 if (isReordering) {
@@ -988,16 +953,32 @@ fun ReorderableHomeAppItem(
                             onDrag = { change, dragAmount ->
                                 change.consume()
                                 accumulatedDragX += dragAmount.x
-                                if (accumulatedDragX > 60f) {
+                                accumulatedDragY += dragAmount.y
+                                visualOffsetX += dragAmount.x
+                                visualOffsetY += dragAmount.y
+                                
+                                if (accumulatedDragX > 65f) {
                                     accumulatedDragX = 0f
+                                    visualOffsetX -= 65f
                                     onMoveRight()
-                                } else if (accumulatedDragX < -60f) {
+                                } else if (accumulatedDragX < -65f) {
                                     accumulatedDragX = 0f
+                                    visualOffsetX += 65f
                                     onMoveLeft()
                                 }
                             },
-                            onDragEnd = { accumulatedDragX = 0f },
-                            onDragCancel = { accumulatedDragX = 0f }
+                            onDragEnd = { 
+                                accumulatedDragX = 0f
+                                accumulatedDragY = 0f
+                                visualOffsetX = 0f
+                                visualOffsetY = 0f
+                            },
+                            onDragCancel = { 
+                                accumulatedDragX = 0f
+                                accumulatedDragY = 0f
+                                visualOffsetX = 0f
+                                visualOffsetY = 0f
+                            }
                         )
                     }
                 } else {
@@ -1136,6 +1117,8 @@ fun ReorderableDockAppItem(
     onRemove: () -> Unit
 ) {
     var accumulatedDragX by remember { mutableFloatStateOf(0f) }
+    var visualOffsetX by remember { mutableFloatStateOf(0f) }
+    val animatedOffsetX by animateFloatAsState(targetValue = visualOffsetX, label = "dock_reorder_x")
 
     val themedColorFilter = if (themedIcon) {
         ColorFilter.tint(MaterialTheme.colorScheme.primary)
@@ -1146,6 +1129,7 @@ fun ReorderableDockAppItem(
     Box(
         modifier = Modifier
             .padding(horizontal = 4.dp)
+            .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
             .rotate(if (isReordering) wobbleAngle else 0f)
             .then(
                 if (isReordering) {
@@ -1154,16 +1138,25 @@ fun ReorderableDockAppItem(
                             onDrag = { change, dragAmount ->
                                 change.consume()
                                 accumulatedDragX += dragAmount.x
-                                if (accumulatedDragX > 45f) {
+                                visualOffsetX += dragAmount.x
+                                if (accumulatedDragX > 50f) {
                                     accumulatedDragX = 0f
+                                    visualOffsetX -= 50f
                                     onMoveRight()
-                                } else if (accumulatedDragX < -45f) {
+                                } else if (accumulatedDragX < -50f) {
                                     accumulatedDragX = 0f
+                                    visualOffsetX += 50f
                                     onMoveLeft()
                                 }
                             },
-                            onDragEnd = { accumulatedDragX = 0f },
-                            onDragCancel = { accumulatedDragX = 0f }
+                            onDragEnd = { 
+                                accumulatedDragX = 0f
+                                visualOffsetX = 0f
+                            },
+                            onDragCancel = { 
+                                accumulatedDragX = 0f
+                                visualOffsetX = 0f
+                            }
                         )
                     }
                 } else {
