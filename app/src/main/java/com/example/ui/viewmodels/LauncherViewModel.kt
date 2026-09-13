@@ -15,6 +15,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+data class LauncherTask(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val text: String,
+    val isDone: Boolean = false
+)
+
 data class LauncherSettings(
     val iconSizeDp: Int = 60,
     val showLabels: Boolean = true,
@@ -35,7 +41,11 @@ data class LauncherSettings(
     val showTorchWidget: Boolean = false,
     val showSettingsWidget: Boolean = true,
     val showTextShadows: Boolean = false,
-    val showDockLines: Boolean = false
+    val showDockLines: Boolean = false,
+    val showDeviceCardWidget: Boolean = true,
+    val showMusicWidget: Boolean = true,
+    val showTasksWidget: Boolean = true,
+    val showAppShortcutsWidget: Boolean = true
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -80,8 +90,57 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             showTorchWidget = prefs.getBoolean("show_torch_widget", false),
             showSettingsWidget = prefs.getBoolean("show_settings_widget", true),
             showTextShadows = prefs.getBoolean("show_text_shadows", false),
-            showDockLines = prefs.getBoolean("show_dock_lines", false)
+            showDockLines = prefs.getBoolean("show_dock_lines", false),
+            showDeviceCardWidget = prefs.getBoolean("show_device_card_widget", true),
+            showMusicWidget = prefs.getBoolean("show_music_widget", true),
+            showTasksWidget = prefs.getBoolean("show_tasks_widget", true),
+            showAppShortcutsWidget = prefs.getBoolean("show_app_shortcuts_widget", true)
         )
+    }
+
+    private val _tasks = MutableStateFlow<List<LauncherTask>>(loadTasks())
+    val tasks: StateFlow<List<LauncherTask>> = _tasks.asStateFlow()
+
+    private fun loadTasks(): List<LauncherTask> {
+        val raw = prefs.getString("home_tasks_list", null) ?: return listOf(
+            LauncherTask(text = "Appel important à 15h", isDone = false),
+            LauncherTask(text = "Envoyer le rapport", isDone = true)
+        )
+        return try {
+            raw.split(";;;").filter { it.isNotBlank() }.mapNotNull { item ->
+                val parts = item.split(":::")
+                if (parts.size >= 3) {
+                    LauncherTask(id = parts[0], text = parts[1], isDone = parts[2] == "true")
+                } else null
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun saveTasks(list: List<LauncherTask>) {
+        _tasks.value = list
+        val serialized = list.joinToString(";;;") { "${it.id}:::${it.text}:::${it.isDone}" }
+        prefs.edit().putString("home_tasks_list", serialized).apply()
+    }
+
+    fun addTask(text: String) {
+        if (text.isNotBlank()) {
+            val updated = _tasks.value + LauncherTask(text = text.trim())
+            saveTasks(updated)
+        }
+    }
+
+    fun toggleTask(id: String) {
+        val updated = _tasks.value.map {
+            if (it.id == id) it.copy(isDone = !it.isDone) else it
+        }
+        saveTasks(updated)
+    }
+
+    fun deleteTask(id: String) {
+        val updated = _tasks.value.filter { it.id != id }
+        saveTasks(updated)
     }
 
     fun updateSettings(newSettings: LauncherSettings) {
@@ -107,6 +166,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putBoolean("show_settings_widget", newSettings.showSettingsWidget)
             .putBoolean("show_text_shadows", newSettings.showTextShadows)
             .putBoolean("show_dock_lines", newSettings.showDockLines)
+            .putBoolean("show_device_card_widget", newSettings.showDeviceCardWidget)
+            .putBoolean("show_music_widget", newSettings.showMusicWidget)
+            .putBoolean("show_tasks_widget", newSettings.showTasksWidget)
+            .putBoolean("show_app_shortcuts_widget", newSettings.showAppShortcutsWidget)
             .apply()
     }
 

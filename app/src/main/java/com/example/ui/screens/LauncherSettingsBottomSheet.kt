@@ -335,6 +335,62 @@ fun LauncherSettingsBottomSheet(
                         checked = settings.showSettingsWidget,
                         onCheckedChange = { viewModel.updateSettings(settings.copy(showSettingsWidget = it)) }
                     )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // App Shortcuts Widget
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Apps,
+                        title = "Widget Raccourcis d'applications",
+                        subtitle = "Affiche la barre d'accès rapide aux applications favorites",
+                        checked = settings.showAppShortcutsWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showAppShortcutsWidget = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Device Battery Card Widget
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Smartphone,
+                        title = "Widget Batterie & Appareil (Pixel style)",
+                        subtitle = "Affiche la carte de l'état de la batterie et de la charge",
+                        checked = settings.showDeviceCardWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showDeviceCardWidget = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Music Player Widget
+                    SettingsSwitchRow(
+                        icon = Icons.Default.MusicNote,
+                        title = "Widget Lecteur Musique (Pixel Music)",
+                        subtitle = "Contrôle rapide de lecture et piste suivante",
+                        checked = settings.showMusicWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showMusicWidget = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Tasks Widget
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Checklist,
+                        title = "Widget Mes Tâches & Notes",
+                        subtitle = "Liste interactive de tâches avec cases à cocher",
+                        checked = settings.showTasksWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showTasksWidget = it)) }
+                    )
                 }
             }
 

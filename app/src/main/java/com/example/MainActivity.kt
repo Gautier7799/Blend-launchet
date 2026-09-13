@@ -58,12 +58,19 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import android.os.Build
 import androidx.activity.SystemBarStyle
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import coil.compose.AsyncImage
 import com.example.domain.AppItem
 import com.example.ui.screens.AddAppsBottomSheet
 import com.example.ui.screens.AiAssistantBottomSheet
 import com.example.ui.screens.AppActionBottomSheet
+import com.example.ui.screens.AppShortcutsCard
+import com.example.ui.screens.DeviceBatteryCard
 import com.example.ui.screens.LauncherSettingsBottomSheet
+import com.example.ui.screens.ManageHomeWidgetsBottomSheet
+import com.example.ui.screens.MusicPlayerCard
+import com.example.ui.screens.TasksCard
 import com.example.ui.screens.TopWidgetsBar
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodels.LauncherSettings
@@ -118,10 +125,12 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     val settings by viewModel.settings.collectAsState()
     val homeAppPackages by viewModel.homeAppPackages.collectAsState()
     val dockAppPackages by viewModel.dockAppPackages.collectAsState()
+    val tasks by viewModel.tasks.collectAsState()
 
     var isDrawerOpen by remember { mutableStateOf(false) }
     var isSettingsOpen by remember { mutableStateOf(false) }
     var isAddAppsOpen by remember { mutableStateOf(false) }
+    var isManageWidgetsOpen by remember { mutableStateOf(false) }
     var isReorderingMode by remember { mutableStateOf(false) }
     var selectedActionApp by remember { mutableStateOf<AppItem?>(null) }
     var isAiAssistantOpen by remember { mutableStateOf(false) }
@@ -161,6 +170,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
         label = "wobble_angle"
     )
 
+    var accumulatedDrag by remember { mutableFloatStateOf(0f) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -185,17 +196,26 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             }
             .pointerInput(isReorderingMode) {
                 if (!isReorderingMode) {
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        // Detect Swipe Up to open drawer
-                        if (dragAmount.y < -50) {
-                            isDrawerOpen = true
+                    detectVerticalDragGestures(
+                        onDragStart = { accumulatedDrag = 0f },
+                        onDragEnd = {
+                            if (accumulatedDrag < -25f) {
+                                isDrawerOpen = true
+                            }
+                            accumulatedDrag = 0f
+                        },
+                        onDragCancel = { accumulatedDrag = 0f },
+                        onVerticalDrag = { change, dragAmount ->
+                            accumulatedDrag += dragAmount
+                            if (accumulatedDrag < -30f) {
+                                change.consume()
+                                isDrawerOpen = true
+                            } else if (accumulatedDrag > 30f && isDrawerOpen) {
+                                change.consume()
+                                isDrawerOpen = false
+                            }
                         }
-                        // Detect Swipe Down to close drawer
-                        else if (dragAmount.y > 50 && isDrawerOpen) {
-                            isDrawerOpen = false
-                        }
-                    }
+                    )
                 }
             }
     ) {
@@ -261,12 +281,67 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 Spacer(modifier = Modifier.height(14.dp))
             }
 
-            // Home Screen Grid with dynamic reordering
+            // Home Screen Grid with dynamic reordering and interactive home widgets
             LazyVerticalGrid(
                 columns = GridCells.Fixed(settings.gridColumns),
-                contentPadding = PaddingValues(bottom = 130.dp),
+                contentPadding = PaddingValues(bottom = 145.dp),
                 modifier = Modifier.weight(1f)
             ) {
+                // 1. Device Battery Card Widget (Pixel 8 style from screenshot)
+                if (!isReorderingMode && settings.showDeviceCardWidget) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        DeviceBatteryCard(
+                            settings = settings,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+
+                // 2. Music Player Widget Card (Pixel Music style from screenshot)
+                if (!isReorderingMode && settings.showMusicWidget) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        MusicPlayerCard(
+                            settings = settings,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+
+                // 3. Quick Tasks Widget Card ("Mes tâches" style from screenshot)
+                if (!isReorderingMode && settings.showTasksWidget) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        TasksCard(
+                            tasks = tasks,
+                            onAddTask = { viewModel.addTask(it) },
+                            onToggleTask = { viewModel.toggleTask(it) },
+                            onDeleteTask = { viewModel.deleteTask(it) },
+                            settings = settings,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+
+                // 4. App Shortcuts Widget Card (اختصارات التطبيقات المتوفرة)
+                if (!isReorderingMode && settings.showAppShortcutsWidget) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        AppShortcutsCard(
+                            apps = apps,
+                            settings = settings,
+                            onAppClick = { viewModel.launchApp(it) },
+                            onOpenDrawer = { isDrawerOpen = true },
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+
+                // Spacing separator if widgets are displayed
+                if (!isReorderingMode && (settings.showDeviceCardWidget || settings.showMusicWidget || settings.showTasksWidget || settings.showAppShortcutsWidget)) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+                }
+
+                // App Grid Items
                 itemsIndexed(
                     items = homeApps,
                     key = { _, app -> app.packageName }
@@ -368,18 +443,102 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             }
                         }
                     }
+
+                    // Manage / Add Widgets Button Slot
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .padding(6.dp)
+                                .clickable { isManageWidgetsOpen = true },
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(settings.iconSizeDp.dp)
+                                    .clip(RoundedCornerShape(18.dp))
+                                    .background(Color.White.copy(alpha = 0.22f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = Color.White.copy(alpha = 0.45f),
+                                        shape = RoundedCornerShape(18.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Widgets,
+                                    contentDescription = "Widgets",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                            if (settings.showLabels) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Widgets",
+                                    fontSize = 11.sp,
+                                    color = Color.White,
+                                    style = if (settings.showTextShadows) {
+                                        androidx.compose.ui.text.TextStyle(
+                                            shadow = androidx.compose.ui.graphics.Shadow(
+                                                color = Color.Black.copy(alpha = 0.7f),
+                                                blurRadius = 6f
+                                            )
+                                        )
+                                    } else {
+                                        androidx.compose.ui.text.TextStyle()
+                                    },
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        // --- iOS: Ultra-Premium Glassmorphism Dock ---
+        // --- iOS: Ultra-Premium Glassmorphism Dock with Swipe Up to Open Drawer ---
         if (!isDrawerOpen) {
+            var dockDragAmount by remember { mutableFloatStateOf(0f) }
+
+            // Gesture handle pill above dock indicating swipe up
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = if (isReorderingMode) 138.dp else 124.dp)
+                    .width(42.dp)
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.55f))
+                    .clickable { isDrawerOpen = true }
+            )
+
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 24.dp, start = 16.dp, end = 16.dp)
                     .fillMaxWidth()
                     .height(if (isReorderingMode) 108.dp else 94.dp)
+                    .pointerInput(isReorderingMode) {
+                        if (!isReorderingMode) {
+                            detectVerticalDragGestures(
+                                onDragStart = { dockDragAmount = 0f },
+                                onDragEnd = {
+                                    if (dockDragAmount < -20f) {
+                                        isDrawerOpen = true
+                                    }
+                                    dockDragAmount = 0f
+                                },
+                                onDragCancel = { dockDragAmount = 0f },
+                                onVerticalDrag = { change, dragAmount ->
+                                    dockDragAmount += dragAmount
+                                    if (dockDragAmount < -25f) {
+                                        change.consume()
+                                        isDrawerOpen = true
+                                    }
+                                }
+                            )
+                        }
+                    }
                     .clip(RoundedCornerShape(32.dp))
                     .background(
                         Brush.verticalGradient(
@@ -546,6 +705,15 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
         if (isAiAssistantOpen) {
             AiAssistantBottomSheet(
                 onDismissRequest = { isAiAssistantOpen = false }
+            )
+        }
+
+        // --- Manage Home Widgets Sheet ---
+        if (isManageWidgetsOpen) {
+            ManageHomeWidgetsBottomSheet(
+                settings = settings,
+                onUpdateSettings = { viewModel.updateSettings(it) },
+                onDismissRequest = { isManageWidgetsOpen = false }
             )
         }
     }
