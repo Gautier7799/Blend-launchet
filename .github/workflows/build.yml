@@ -27,10 +27,21 @@ jobs:
           chmod +x gradlew
           mkdir -p gradle/wrapper
           wget -q https://raw.githubusercontent.com/cortinico/kotlin-android-template/main/gradle/wrapper/gradle-wrapper.jar -O gradle/wrapper/gradle-wrapper.jar
-          wget -q https://raw.githubusercontent.com/cortinico/kotlin-android-template/main/gradle/wrapper/gradle-wrapper.properties -O gradle/wrapper/gradle-wrapper.properties
         else
           chmod +x gradlew
         fi
+
+        # ضبط إصدار Gradle ليكون 9.3.1 المطلوب للـ Android Gradle Plugin
+        mkdir -p gradle/wrapper
+        cat << 'EOF' > gradle/wrapper/gradle-wrapper.properties
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-9.3.1-bin.zip
+        networkTimeout=10000
+        validateDistributionUrl=true
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
+        EOF
 
         # إنشاء ملف debug.keystore وتوزيعه
         keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
