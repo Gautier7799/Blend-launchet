@@ -18,15 +18,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -45,7 +50,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.domain.AppItem
+import com.example.ui.screens.LauncherSettingsBottomSheet
 import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.viewmodels.LauncherSettings
 import com.example.ui.viewmodels.LauncherViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -78,15 +85,26 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit) {
     val apps by viewModel.installedApps.collectAsState()
+    val settings by viewModel.settings.collectAsState()
     var isDrawerOpen by remember { mutableStateOf(false) }
+    var isSettingsOpen by remember { mutableStateOf(false) }
 
-    val dockApps = apps.take(4)
-    val homeApps = if (apps.size > 4) apps.drop(4).take(12) else emptyList() // Show limited apps on home
+    val dockApps = apps.take(settings.dockCount)
+    val homeApps = if (apps.size > settings.dockCount) {
+        apps.drop(settings.dockCount).take(settings.gridColumns * 3)
+    } else {
+        emptyList()
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = { isSettingsOpen = true }
+                )
+            }
             .pointerInput(Unit) {
                 detectDragGestures { change, dragAmount ->
                     change.consume()
@@ -108,18 +126,27 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                 .padding(top = 64.dp, start = 16.dp, end = 16.dp)
         ) {
             // Pixel: At A Glance & Search Bar
-            AtAGlanceWidget(onSearchClick)
+            AtAGlanceWidget(
+                onSearchClick = onSearchClick,
+                onSettingsClick = { isSettingsOpen = true }
+            )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             // Home Screen Grid
             LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
+                columns = GridCells.Fixed(settings.gridColumns),
                 contentPadding = PaddingValues(bottom = 120.dp),
                 modifier = Modifier.weight(1f)
             ) {
                 items(homeApps) { app ->
-                    AppIconItem(app = app, onClick = { viewModel.launchApp(app.packageName) })
+                    AppIconItem(
+                        app = app,
+                        showLabel = settings.showLabels,
+                        iconSize = settings.iconSizeDp.dp,
+                        themedIcon = settings.themedIcons,
+                        onClick = { viewModel.launchApp(app.packageName) }
+                    )
                 }
             }
         }
@@ -136,8 +163,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.35f),
-                                Color.White.copy(alpha = 0.18f)
+                                Color.White.copy(alpha = settings.dockOpacity),
+                                Color.White.copy(alpha = settings.dockOpacity * 0.5f)
                             )
                         )
                     )
@@ -163,7 +190,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                         AppIconItem(
                             app = app,
                             showLabel = false,
-                            iconSize = 56.dp,
+                            iconSize = (settings.iconSizeDp - 4).dp,
+                            themedIcon = settings.themedIcons,
                             onClick = { viewModel.launchApp(app.packageName) }
                         )
                     }
@@ -171,7 +199,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
             }
         }
 
-        // --- Android: App Drawer ---
+        // --- Android: Enhanced App Drawer with Search ---
         AnimatedVisibility(
             visible = isDrawerOpen,
             enter = slideInVertically(
@@ -184,13 +212,31 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
             ),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            AppDrawer(apps = apps, onAppClick = { viewModel.launchApp(it) })
+            AppDrawer(
+                apps = apps,
+                settings = settings,
+                onAppClick = { viewModel.launchApp(it) },
+                onClose = { isDrawerOpen = false },
+                onSettingsClick = { isSettingsOpen = true }
+            )
+        }
+
+        // --- Launcher Settings Sheet ---
+        if (isSettingsOpen) {
+            LauncherSettingsBottomSheet(
+                viewModel = viewModel,
+                settings = settings,
+                onDismissRequest = { isSettingsOpen = false }
+            )
         }
     }
 }
 
 @Composable
-fun AtAGlanceWidget(onSearchClick: () -> Unit) {
+fun AtAGlanceWidget(
+    onSearchClick: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
     val dateFormat = SimpleDateFormat("EEEE, MMM d", Locale.getDefault())
     val currentDate = dateFormat.format(Date())
 
@@ -213,12 +259,11 @@ fun AtAGlanceWidget(onSearchClick: () -> Unit) {
             )
         )
 
-        // Glassmorphic Capsule Search Bar
+        // Glassmorphic Capsule Search Bar with Settings Gear
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp)
-                .clickable { onSearchClick() },
+                .height(54.dp),
             shape = RoundedCornerShape(27.dp),
             color = Color.White.copy(alpha = 0.88f),
             shadowElevation = 6.dp,
@@ -235,55 +280,166 @@ fun AtAGlanceWidget(onSearchClick: () -> Unit) {
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 18.dp),
+                    .padding(start = 18.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = Color(0xFF3C4043),
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Search...",
-                    color = Color(0xFF5F6368),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Normal
-                )
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable { onSearchClick() },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color(0xFF3C4043),
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Search...",
+                        color = Color(0xFF5F6368),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+
+                IconButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Paramètres du lanceur",
+                        tint = Color(0xFF3C4043),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun AppDrawer(apps: List<AppItem>, onAppClick: (String) -> Unit) {
+fun AppDrawer(
+    apps: List<AppItem>,
+    settings: LauncherSettings,
+    onAppClick: (String) -> Unit,
+    onClose: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredApps = remember(searchQuery, apps) {
+        if (searchQuery.isBlank()) apps
+        else apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
-        // Material You Dynamic Color for Drawer Background
-        color = MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
+        color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 48.dp, start = 16.dp, end = 16.dp)
         ) {
-            Text(
-                text = "All Apps",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(bottom = 16.dp, start = 8.dp)
+            // Header Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Applications",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                    ) {
+                        Text(
+                            text = "${filteredApps.size}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                Row {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Paramètres",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Fermer",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                }
+            }
+
+            // In-Drawer Live Search Field
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Rechercher dans les applications...") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Rechercher",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Effacer"
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(20.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f)
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
             )
 
+            // Grid of Filtered Apps
             LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                contentPadding = PaddingValues(bottom = 40.dp)
+                columns = GridCells.Fixed(settings.gridColumns),
+                contentPadding = PaddingValues(bottom = 40.dp),
+                modifier = Modifier.weight(1f)
             ) {
-                items(apps) { app ->
+                items(filteredApps) { app ->
                     AppIconItem(
                         app = app,
                         textColor = MaterialTheme.colorScheme.onBackground,
                         shadow = false,
+                        showLabel = settings.showLabels,
+                        iconSize = settings.iconSizeDp.dp,
+                        themedIcon = settings.themedIcons,
                         onClick = { onAppClick(app.packageName) }
                     )
                 }
@@ -299,6 +455,7 @@ fun AppIconItem(
     textColor: Color = Color.White,
     shadow: Boolean = true,
     iconSize: Dp = 60.dp,
+    themedIcon: Boolean = false,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -311,6 +468,12 @@ fun AppIconItem(
         ),
         label = "icon_press_scale"
     )
+
+    val themedColorFilter = if (themedIcon) {
+        ColorFilter.tint(MaterialTheme.colorScheme.primary)
+    } else {
+        null
+    }
 
     Column(
         modifier = Modifier
@@ -326,6 +489,7 @@ fun AppIconItem(
         AsyncImage(
             model = app.icon,
             contentDescription = app.label,
+            colorFilter = themedColorFilter,
             modifier = Modifier
                 .size(iconSize)
                 .clip(RoundedCornerShape(18.dp)),
@@ -357,3 +521,4 @@ fun AppIconItem(
         }
     }
 }
+
