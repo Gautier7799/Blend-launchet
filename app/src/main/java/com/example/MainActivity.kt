@@ -178,49 +178,55 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
-            .pointerInput(settings.doubleTapToSleep, settings.hapticFeedback, isReorderingMode) {
-                detectTapGestures(
-                    onDoubleTap = {
-                        if (settings.doubleTapToSleep && !isReorderingMode) {
+    ) {
+        // Background gesture detector (placed behind everything)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(settings.doubleTapToSleep, settings.hapticFeedback, isReorderingMode) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            if (settings.doubleTapToSleep && !isReorderingMode) {
+                                if (settings.hapticFeedback) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                                viewModel.performSleep(context)
+                            }
+                        },
+                        onLongPress = {
                             if (settings.hapticFeedback) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
-                            viewModel.performSleep(context)
-                        }
-                    },
-                    onLongPress = {
-                        if (settings.hapticFeedback) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        }
-                        isSettingsOpen = true
-                    }
-                )
-            }
-            .pointerInput(isReorderingMode) {
-                if (!isReorderingMode) {
-                    detectVerticalDragGestures(
-                        onDragStart = { accumulatedDrag = 0f },
-                        onDragEnd = {
-                            if (accumulatedDrag < -25f) {
-                                isDrawerOpen = true
-                            }
-                            accumulatedDrag = 0f
-                        },
-                        onDragCancel = { accumulatedDrag = 0f },
-                        onVerticalDrag = { change, dragAmount ->
-                            accumulatedDrag += dragAmount
-                            if (accumulatedDrag < -30f) {
-                                change.consume()
-                                isDrawerOpen = true
-                            } else if (accumulatedDrag > 30f && isDrawerOpen) {
-                                change.consume()
-                                isDrawerOpen = false
-                            }
+                            isSettingsOpen = true
                         }
                     )
                 }
-            }
-    ) {
+                .pointerInput(isReorderingMode) {
+                    if (!isReorderingMode) {
+                        detectVerticalDragGestures(
+                            onDragStart = { accumulatedDrag = 0f },
+                            onDragEnd = {
+                                if (accumulatedDrag < -25f) {
+                                    isDrawerOpen = true
+                                }
+                                accumulatedDrag = 0f
+                            },
+                            onDragCancel = { accumulatedDrag = 0f },
+                            onVerticalDrag = { change, dragAmount ->
+                                accumulatedDrag += dragAmount
+                                if (accumulatedDrag < -30f) {
+                                    change.consume()
+                                    isDrawerOpen = true
+                                } else if (accumulatedDrag > 30f && isDrawerOpen) {
+                                    change.consume()
+                                    isDrawerOpen = false
+                                }
+                            }
+                        )
+                    }
+                }
+        )
+        
         // --- Home Screen Content ---
         Column(
             modifier = Modifier

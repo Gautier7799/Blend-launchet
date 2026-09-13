@@ -155,7 +155,7 @@ fun DeviceBatteryCard(
 
                 Box(
                     modifier = Modifier
-                        .size(34.dp)
+                        .size(26.dp) // Shrunk from 34.dp
                         .clip(CircleShape)
                         .background(darkCircleColor),
                     contentAlignment = Alignment.Center
@@ -164,7 +164,7 @@ fun DeviceBatteryCard(
                         imageVector = if (isCharging) Icons.Default.Bolt else Icons.Default.BatteryChargingFull,
                         contentDescription = "Charge",
                         tint = Color(0xFFD3E8D0),
-                        modifier = Modifier.size(19.dp)
+                        modifier = Modifier.size(14.dp) // Shrunk from 19.dp
                     )
                 }
             }
@@ -322,9 +322,9 @@ fun TasksCard(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
-            // Header Row: "Mes tâches" + Add Button
+            // Header Row: "Mes tâches"
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().clickable { showAddDialog = true },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -345,28 +345,8 @@ fun TasksCard(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-
-                // Green pill '+' button
-                Surface(
-                    onClick = {
-                        if (settings.hapticFeedback) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        }
-                        showAddDialog = true
-                    },
-                    shape = CircleShape,
-                    color = Color(0xFF385239),
-                    modifier = Modifier.size(34.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Ajouter tâche",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
+                
+                // Removed the green '+' button as per request, tapping the header now opens the add dialog.
             }
 
             Spacer(modifier = Modifier.height(14.dp))

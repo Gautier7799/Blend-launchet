@@ -106,138 +106,13 @@ fun TopWidgetsBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // --- 1. AI Assistant Icon (Replaces the large Search Bar) ---
-        if (settings.showAiWidget) {
-            Surface(
-                onClick = {
-                    if (settings.hapticFeedback) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    }
-                    onAiClick()
-                },
-                shape = RoundedCornerShape(22.dp),
-                color = Color.White.copy(alpha = 0.22f),
-                shadowElevation = 0.dp,
-                tonalElevation = 0.dp
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(geminiGradient),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = "Assistant IA",
-                            tint = Color.White,
-                            modifier = Modifier.size(15.dp)
-                        )
-                    }
-                    Text(
-                        text = "AI",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
-        // Scrollable or wrapping Widget Icons row (Replacing the static Date text)
+        // Scrollable or wrapping Widget Icons row
         Row(
             modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // --- Date & Calendar Widget ---
-            if (settings.showDateWidget) {
-                WidgetPillItem(
-                    icon = Icons.Default.CalendarToday,
-                    label = currentDateString.ifEmpty { "Aujourd'hui" },
-                    onClick = {
-                        try {
-                            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR)
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://calendar.google.com"))
-                            context.startActivity(webIntent)
-                        }
-                    }
-                )
-            }
-
-            // --- Weather Widget ---
-            if (settings.showWeatherWidget) {
-                WidgetPillItem(
-                    icon = Icons.Default.WbSunny,
-                    label = "24°",
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=meteo"))
-                        context.startActivity(intent)
-                    }
-                )
-            }
-
-            // --- Battery Widget ---
-            if (settings.showBatteryWidget) {
-                WidgetPillItem(
-                    icon = if (isCharging) Icons.Default.BatteryChargingFull else Icons.Default.BatteryFull,
-                    label = "$batteryPercent%",
-                    onClick = {
-                        try {
-                            val intent = Intent(Intent.ACTION_POWER_USAGE_SUMMARY)
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            val intent = Intent(Settings.ACTION_SETTINGS)
-                            context.startActivity(intent)
-                        }
-                    }
-                )
-            }
-
-            // --- Live Clock Widget (Optional) ---
-            if (settings.showClockWidget) {
-                WidgetPillItem(
-                    icon = Icons.Default.AccessTime,
-                    label = currentTimeString.ifEmpty { "--:--" },
-                    onClick = {
-                        try {
-                            val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            val intent = Intent(Settings.ACTION_DATE_SETTINGS)
-                            context.startActivity(intent)
-                        }
-                    }
-                )
-            }
-
-            // --- Flashlight Quick Toggle (Optional) ---
-            if (settings.showTorchWidget && cameraManager != null) {
-                WidgetPillItem(
-                    icon = if (isTorchOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                    label = if (isTorchOn) "ON" else "Torche",
-                    active = isTorchOn,
-                    onClick = {
-                        if (settings.hapticFeedback) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        }
-                        try {
-                            val cameraId = cameraManager.cameraIdList.firstOrNull()
-                            if (cameraId != null) {
-                                isTorchOn = !isTorchOn
-                                cameraManager.setTorchMode(cameraId, isTorchOn)
-                            }
-                        } catch (_: Exception) {}
-                    }
-                )
-            }
+            // Keep the row empty to push the Settings gear to the end
         }
 
         // --- Settings Shortcut Widget ---
@@ -248,14 +123,14 @@ fun TopWidgetsBar(
                 color = Color.White.copy(alpha = 0.20f),
                 shadowElevation = 0.dp,
                 tonalElevation = 0.dp,
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(28.dp) // Shrunk from 38.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "Paramètres",
                         tint = Color.White,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(16.dp) // Shrunk from 20.dp
                     )
                 }
             }
