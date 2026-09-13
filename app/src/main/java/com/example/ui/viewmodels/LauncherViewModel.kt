@@ -43,6 +43,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _homeAppPackages = MutableStateFlow<List<String>>(loadHomeAppPackages())
     val homeAppPackages: StateFlow<List<String>> = _homeAppPackages.asStateFlow()
 
+    private val _dockAppPackages = MutableStateFlow<List<String>>(loadDockAppPackages())
+    val dockAppPackages: StateFlow<List<String>> = _dockAppPackages.asStateFlow()
+
     init {
         loadApps()
     }
@@ -56,7 +59,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             themedIcons = prefs.getBoolean("themed_icons", false),
             dockOpacity = prefs.getFloat("dock_opacity", 0.35f),
             doubleTapToSleep = prefs.getBoolean("double_tap_sleep", true),
-            dynamicIslandEnabled = prefs.getBoolean("dynamic_island", false),
+            dynamicIslandEnabled = false,
             hapticFeedback = prefs.getBoolean("haptic_feedback", true),
             fullscreenMode = prefs.getBoolean("fullscreen_mode", false),
             hideDrawerHeader = prefs.getBoolean("hide_drawer_header", false)
@@ -64,7 +67,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun updateSettings(newSettings: LauncherSettings) {
-        _settings.value = newSettings
+        _settings.value = newSettings.copy(dynamicIslandEnabled = false)
         prefs.edit()
             .putInt("icon_size", newSettings.iconSizeDp)
             .putBoolean("show_labels", newSettings.showLabels)
@@ -73,7 +76,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putBoolean("themed_icons", newSettings.themedIcons)
             .putFloat("dock_opacity", newSettings.dockOpacity)
             .putBoolean("double_tap_sleep", newSettings.doubleTapToSleep)
-            .putBoolean("dynamic_island", newSettings.dynamicIslandEnabled)
+            .putBoolean("dynamic_island", false)
             .putBoolean("haptic_feedback", newSettings.hapticFeedback)
             .putBoolean("fullscreen_mode", newSettings.fullscreenMode)
             .putBoolean("hide_drawer_header", newSettings.hideDrawerHeader)
@@ -86,6 +89,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val item = current.removeAt(fromIndex)
             current.add(toIndex, item)
             saveHomeAppPackages(current)
+        }
+    }
+
+    fun reorderDockApps(fromIndex: Int, toIndex: Int) {
+        val current = _dockAppPackages.value.toMutableList()
+        if (fromIndex in current.indices && toIndex in current.indices && fromIndex != toIndex) {
+            val item = current.removeAt(fromIndex)
+            current.add(toIndex, item)
+            saveDockAppPackages(current)
         }
     }
 
@@ -109,6 +121,47 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private fun saveHomeAppPackages(list: List<String>) {
         _homeAppPackages.value = list
         prefs.edit().putString("home_app_packages", list.joinToString(",")).apply()
+    }
+
+    private fun loadDockAppPackages(): List<String> {
+        val raw = prefs.getString("dock_app_packages", null) ?: return emptyList()
+        return raw.split(",").filter { it.isNotBlank() }
+    }
+
+    private fun saveDockAppPackages(list: List<String>) {
+        _dockAppPackages.value = list
+        prefs.edit().putString("dock_app_packages", list.joinToString(",")).apply()
+    }
+
+    fun addAppToDock(packageName: String) {
+        val current = _dockAppPackages.value.toMutableList()
+        if (!current.contains(packageName)) {
+            current.add(packageName)
+            saveDockAppPackages(current)
+        }
+    }
+
+    fun removeAppFromDock(packageName: String) {
+        val current = _dockAppPackages.value.toMutableList()
+        if (current.remove(packageName)) {
+            saveDockAppPackages(current)
+        }
+    }
+
+    fun moveAppOnDock(packageName: String, step: Int) {
+        val current = _dockAppPackages.value.toMutableList()
+        val index = current.indexOf(packageName)
+        if (index == -1) return
+        val newIndex = index + step
+        if (newIndex in 0 until current.size) {
+            current.removeAt(index)
+            current.add(newIndex, packageName)
+            saveDockAppPackages(current)
+        }
+    }
+
+    fun isAppOnDock(packageName: String): Boolean {
+        return _dockAppPackages.value.contains(packageName)
     }
 
     fun addAppToHome(packageName: String) {
@@ -147,9 +200,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val apps = repository.getInstalledApps()
             _installedApps.value = apps
 
-            // If home apps list was never saved, initialize it with first non-dock apps
+            // If dock apps list was never saved, initialize it with first dockCount apps
+            if (_dockAppPackages.value.isEmpty() && apps.isNotEmpty()) {
+                val initialDock = apps.take(settings.value.dockCount).map { it.packageName }
+                saveDockAppPackages(initialDock)
+            }
+
+            // If home apps list was never saved, initialize it with non-dock apps
             if (_homeAppPackages.value.isEmpty() && apps.isNotEmpty()) {
-                val initialHome = apps.drop(settings.value.dockCount)
+                val dockSet = _dockAppPackages.value.toSet()
+                val initialHome = apps.filterNot { dockSet.contains(it.packageName) }
                     .take(settings.value.gridColumns * 3)
                     .map { it.packageName }
                 saveHomeAppPackages(initialHome)

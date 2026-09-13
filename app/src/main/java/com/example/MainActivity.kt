@@ -60,7 +60,6 @@ import coil.compose.AsyncImage
 import com.example.domain.AppItem
 import com.example.ui.screens.AddAppsBottomSheet
 import com.example.ui.screens.AppActionBottomSheet
-import com.example.ui.screens.DynamicIslandWidget
 import com.example.ui.screens.LauncherSettingsBottomSheet
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodels.LauncherSettings
@@ -101,6 +100,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
     val apps by viewModel.installedApps.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val homeAppPackages by viewModel.homeAppPackages.collectAsState()
+    val dockAppPackages by viewModel.dockAppPackages.collectAsState()
 
     var isDrawerOpen by remember { mutableStateOf(false) }
     var isSettingsOpen by remember { mutableStateOf(false) }
@@ -124,13 +124,12 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
         }
     }
 
-    val dockApps = remember(apps, settings.dockCount) {
-        apps.take(settings.dockCount)
-    }
-
-    val homeApps = remember(homeAppPackages, apps) {
-        val appMap = apps.associateBy { it.packageName }
+    val appMap = remember(apps) { apps.associateBy { it.packageName } }
+    val homeApps = remember(homeAppPackages, appMap) {
         homeAppPackages.mapNotNull { appMap[it] }
+    }
+    val dockApps = remember(dockAppPackages, appMap, settings.dockCount) {
+        dockAppPackages.take(settings.dockCount).mapNotNull { appMap[it] }
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "wobble_transition")
@@ -187,7 +186,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    top = if (settings.dynamicIslandEnabled) 36.dp else if (settings.fullscreenMode) 20.dp else 56.dp,
+                    top = if (settings.fullscreenMode) 24.dp else 52.dp,
                     start = 16.dp,
                     end = 16.dp
                 )
@@ -232,21 +231,6 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                         }
                     }
                 }
-            }
-
-            // iOS: Dynamic Island Pill Widget
-            if (settings.dynamicIslandEnabled && !isReorderingMode) {
-                DynamicIslandWidget(
-                    onSearchClick = onSearchClick,
-                    onSettingsClick = { isSettingsOpen = true },
-                    onLockClick = {
-                        if (settings.hapticFeedback) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        }
-                        viewModel.performSleep(context)
-                    },
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
             }
 
             // Pixel: At A Glance & Search Bar
@@ -365,13 +349,13 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
         }
 
         // --- iOS: Ultra-Premium Glassmorphism Dock ---
-        if (!isDrawerOpen && !isReorderingMode) {
+        if (!isDrawerOpen) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 24.dp, start = 16.dp, end = 16.dp)
                     .fillMaxWidth()
-                    .height(94.dp)
+                    .height(if (isReorderingMode) 108.dp else 94.dp)
                     .clip(RoundedCornerShape(32.dp))
                     .background(
                         Brush.verticalGradient(
@@ -391,7 +375,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                         ),
                         shape = RoundedCornerShape(32.dp)
                     )
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Row(
@@ -399,15 +383,68 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    dockApps.forEach { app ->
-                        AppIconItem(
+                    dockApps.forEachIndexed { index, app ->
+                        ReorderableDockAppItem(
                             app = app,
-                            showLabel = false,
-                            iconSize = (settings.iconSizeDp - 4).dp,
+                            index = index,
+                            totalCount = dockApps.size,
+                            isReordering = isReorderingMode,
+                            wobbleAngle = wobbleAngle,
+                            iconSize = (settings.iconSizeDp - 6).dp,
                             themedIcon = settings.themedIcons,
                             onClick = { viewModel.launchApp(app.packageName) },
-                            onLongClick = { selectedActionApp = app }
+                            onLongClick = {
+                                if (settings.hapticFeedback) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                                selectedActionApp = app
+                            },
+                            onMoveLeft = {
+                                if (index > 0) {
+                                    if (settings.hapticFeedback) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    }
+                                    viewModel.reorderDockApps(index, index - 1)
+                                }
+                            },
+                            onMoveRight = {
+                                if (index < dockApps.size - 1) {
+                                    if (settings.hapticFeedback) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    }
+                                    viewModel.reorderDockApps(index, index + 1)
+                                }
+                            },
+                            onRemove = {
+                                if (settings.hapticFeedback) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                                viewModel.removeAppFromDock(app.packageName)
+                            }
                         )
+                    }
+
+                    if (isReorderingMode && dockApps.size < settings.dockCount) {
+                        Box(
+                            modifier = Modifier
+                                .size((settings.iconSizeDp - 6).dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color.White.copy(alpha = 0.22f))
+                                .border(
+                                    width = 1.dp,
+                                    color = Color.White.copy(alpha = 0.45f),
+                                    shape = RoundedCornerShape(18.dp)
+                                )
+                                .clickable { isAddAppsOpen = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Ajouter au Dock",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -440,12 +477,18 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
         selectedActionApp?.let { app ->
             val homeIndex = homeAppPackages.indexOf(app.packageName)
             val isOnHome = homeIndex != -1
+            val dockIndex = dockAppPackages.indexOf(app.packageName)
+            val isOnDock = dockIndex != -1
+
             AppActionBottomSheet(
                 app = app,
                 viewModel = viewModel,
                 isOnHome = isOnHome,
                 canMoveLeft = isOnHome && homeIndex > 0,
                 canMoveRight = isOnHome && homeIndex < homeAppPackages.size - 1,
+                isOnDock = isOnDock,
+                canMoveDockLeft = isOnDock && dockIndex > 0,
+                canMoveDockRight = isOnDock && dockIndex < dockAppPackages.size - 1,
                 onStartReorder = { isReorderingMode = true },
                 onDismissRequest = { selectedActionApp = null }
             )
@@ -457,6 +500,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                 viewModel = viewModel,
                 apps = apps,
                 homeAppPackages = homeAppPackages,
+                dockAppPackages = dockAppPackages,
                 onDismissRequest = { isAddAppsOpen = false }
             )
         }
@@ -950,6 +994,149 @@ fun ReorderableHomeAppItem(
                     contentDescription = "Supprimer",
                     tint = Color.White,
                     modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun ReorderableDockAppItem(
+    app: AppItem,
+    index: Int,
+    totalCount: Int,
+    isReordering: Boolean,
+    wobbleAngle: Float,
+    iconSize: Dp,
+    themedIcon: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onMoveLeft: () -> Unit,
+    onMoveRight: () -> Unit,
+    onRemove: () -> Unit
+) {
+    var accumulatedDragX by remember { mutableFloatStateOf(0f) }
+
+    val themedColorFilter = if (themedIcon) {
+        ColorFilter.tint(MaterialTheme.colorScheme.primary)
+    } else {
+        null
+    }
+
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 4.dp)
+            .rotate(if (isReordering) wobbleAngle else 0f)
+            .then(
+                if (isReordering) {
+                    Modifier.pointerInput(index) {
+                        detectDragGestures(
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                accumulatedDragX += dragAmount.x
+                                if (accumulatedDragX > 45f) {
+                                    accumulatedDragX = 0f
+                                    onMoveRight()
+                                } else if (accumulatedDragX < -45f) {
+                                    accumulatedDragX = 0f
+                                    onMoveLeft()
+                                }
+                            },
+                            onDragEnd = { accumulatedDragX = 0f },
+                            onDragCancel = { accumulatedDragX = 0f }
+                        )
+                    }
+                } else {
+                    Modifier.combinedClickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = onClick,
+                        onLongClick = onLongClick
+                    )
+                }
+            ),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (app.iconBitmap != null) {
+                Image(
+                    bitmap = app.iconBitmap,
+                    contentDescription = app.label,
+                    colorFilter = themedColorFilter,
+                    modifier = Modifier
+                        .size(iconSize)
+                        .clip(RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                AsyncImage(
+                    model = app.icon,
+                    contentDescription = app.label,
+                    colorFilter = themedColorFilter,
+                    modifier = Modifier
+                        .size(iconSize)
+                        .clip(RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            if (isReordering) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (index > 0) {
+                        IconButton(
+                            onClick = onMoveLeft,
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Déplacer à gauche",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                    if (index < totalCount - 1) {
+                        IconButton(
+                            onClick = onMoveRight,
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Déplacer à droite",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // In Reorder Mode: Top-Right Remove Badge (-)
+        if (isReordering) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-4).dp)
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE53935))
+                    .clickable { onRemove() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Supprimer du dock",
+                    tint = Color.White,
+                    modifier = Modifier.size(12.dp)
                 )
             }
         }

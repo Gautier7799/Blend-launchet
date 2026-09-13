@@ -285,20 +285,6 @@ fun LauncherSettingsBottomSheet(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
 
-                    // Dynamic Island Toggle
-                    SettingsSwitchRow(
-                        icon = Icons.Default.Circle,
-                        title = "Dynamic Island (Capsule iOS)",
-                        subtitle = "Afficher l'heure, la batterie et les raccourcis dans une capsule interactive",
-                        checked = settings.dynamicIslandEnabled,
-                        onCheckedChange = { viewModel.updateSettings(settings.copy(dynamicIslandEnabled = it)) }
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-
                     // Haptic Feedback Toggle
                     SettingsSwitchRow(
                         icon = Icons.Default.TouchApp,

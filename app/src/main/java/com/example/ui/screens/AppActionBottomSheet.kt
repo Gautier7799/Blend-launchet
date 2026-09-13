@@ -36,6 +36,9 @@ fun AppActionBottomSheet(
     isOnHome: Boolean,
     canMoveLeft: Boolean,
     canMoveRight: Boolean,
+    isOnDock: Boolean = false,
+    canMoveDockLeft: Boolean = false,
+    canMoveDockRight: Boolean = false,
     onStartReorder: (() -> Unit)? = null,
     onDismissRequest: () -> Unit
 ) {
@@ -118,7 +121,83 @@ fun AppActionBottomSheet(
                 }
             )
 
-            // Action 2: Add or Remove from Home
+            // Dock Actions
+            if (isOnDock) {
+                ActionItemRow(
+                    icon = Icons.Default.DeleteOutline,
+                    title = "Retirer du Dock",
+                    tint = MaterialTheme.colorScheme.error,
+                    onClick = {
+                        viewModel.removeAppFromDock(app.packageName)
+                        onDismissRequest()
+                    }
+                )
+
+                if (canMoveDockLeft || canMoveDockRight) {
+                    Text(
+                        text = "Position dans le Dock :",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp, bottom = 4.dp, start = 4.dp)
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (canMoveDockLeft) {
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.moveAppOnDock(app.packageName, -1)
+                                    onDismissRequest()
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Vers la gauche", fontSize = 13.sp)
+                            }
+                        }
+
+                        if (canMoveDockRight) {
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.moveAppOnDock(app.packageName, 1)
+                                    onDismissRequest()
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Vers la droite", fontSize = 13.sp)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                ActionItemRow(
+                    icon = Icons.Default.VerticalAlignBottom,
+                    title = "Ajouter au Dock",
+                    tint = MaterialTheme.colorScheme.secondary,
+                    onClick = {
+                        viewModel.addAppToDock(app.packageName)
+                        onDismissRequest()
+                    }
+                )
+            }
+
+            // Home Actions
             if (isOnHome) {
                 ActionItemRow(
                     icon = Icons.Default.DeleteOutline,
@@ -130,20 +209,14 @@ fun AppActionBottomSheet(
                     }
                 )
 
-                if (onStartReorder != null) {
-                    ActionItemRow(
-                        icon = Icons.Default.OpenWith,
-                        title = "Mode déplacement / Réorganiser les icônes",
-                        tint = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            onDismissRequest()
-                            onStartReorder()
-                        }
-                    )
-                }
-
                 // Move Actions (Only if on Home)
                 if (canMoveLeft || canMoveRight) {
+                    Text(
+                        text = "Position sur l'accueil :",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp, bottom = 4.dp, start = 4.dp)
+                    )
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -197,6 +270,18 @@ fun AppActionBottomSheet(
                     onClick = {
                         viewModel.addAppToHome(app.packageName)
                         onDismissRequest()
+                    }
+                )
+            }
+
+            if (onStartReorder != null) {
+                ActionItemRow(
+                    icon = Icons.Default.OpenWith,
+                    title = "Mode déplacement / Réorganiser les icônes",
+                    tint = MaterialTheme.colorScheme.primary,
+                    onClick = {
+                        onDismissRequest()
+                        onStartReorder()
                     }
                 )
             }

@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,16 +25,23 @@ import coil.compose.AsyncImage
 import com.example.domain.AppItem
 import com.example.ui.viewmodels.LauncherViewModel
 
+enum class AddAppsTarget {
+    HOME, DOCK
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAppsBottomSheet(
     viewModel: LauncherViewModel,
     apps: List<AppItem>,
     homeAppPackages: List<String>,
+    dockAppPackages: List<String> = emptyList(),
+    initialTarget: AddAppsTarget = AddAppsTarget.HOME,
     onDismissRequest: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var searchQuery by remember { mutableStateOf("") }
+    var selectedTarget by remember { mutableStateOf(initialTarget) }
 
     val filteredApps = remember(searchQuery, apps) {
         if (searchQuery.isBlank()) apps
@@ -64,13 +72,16 @@ fun AddAppsBottomSheet(
             ) {
                 Column {
                     Text(
-                        text = "Ajouter à l'écran d'accueil",
+                        text = if (selectedTarget == AddAppsTarget.HOME) "Ajouter à l'écran d'accueil" else "Gérer les applications du Dock",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Sélectionnez les applications à afficher sur l'écran principal",
+                        text = if (selectedTarget == AddAppsTarget.HOME)
+                            "Sélectionnez les applications pour l'écran principal"
+                        else
+                            "Sélectionnez les applications pour le Dock inférieur",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -84,11 +95,38 @@ fun AddAppsBottomSheet(
                 }
             }
 
+            // Target Selector: Home vs Dock
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = selectedTarget == AddAppsTarget.HOME,
+                    onClick = { selectedTarget = AddAppsTarget.HOME },
+                    label = { Text("Écran d'accueil (${homeAppPackages.size})") },
+                    leadingIcon = if (selectedTarget == AddAppsTarget.HOME) {
+                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else null,
+                    modifier = Modifier.weight(1f)
+                )
+                FilterChip(
+                    selected = selectedTarget == AddAppsTarget.DOCK,
+                    onClick = { selectedTarget = AddAppsTarget.DOCK },
+                    label = { Text("Dock (${dockAppPackages.size})") },
+                    leadingIcon = if (selectedTarget == AddAppsTarget.DOCK) {
+                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else null,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
             // Search Filter
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Rechercher...") },
+                placeholder = { Text("Rechercher une application...") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -111,34 +149,51 @@ fun AddAppsBottomSheet(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 400.dp),
+                    .heightIn(max = 380.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(filteredApps) { app ->
-                    val isAdded = homeAppPackages.contains(app.packageName)
+                    val isAdded = if (selectedTarget == AddAppsTarget.HOME) {
+                        homeAppPackages.contains(app.packageName)
+                    } else {
+                        dockAppPackages.contains(app.packageName)
+                    }
 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
                             .clickable {
-                                if (isAdded) {
-                                    viewModel.removeAppFromHome(app.packageName)
+                                if (selectedTarget == AddAppsTarget.HOME) {
+                                    if (isAdded) viewModel.removeAppFromHome(app.packageName)
+                                    else viewModel.addAppToHome(app.packageName)
                                 } else {
-                                    viewModel.addAppToHome(app.packageName)
+                                    if (isAdded) viewModel.removeAppFromDock(app.packageName)
+                                    else viewModel.addAppToDock(app.packageName)
                                 }
                             }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AsyncImage(
-                            model = app.icon,
-                            contentDescription = app.label,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                        if (app.iconBitmap != null) {
+                            Image(
+                                bitmap = app.iconBitmap,
+                                contentDescription = app.label,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            AsyncImage(
+                                model = app.icon,
+                                contentDescription = app.label,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                         Spacer(modifier = Modifier.width(14.dp))
                         Text(
                             text = app.label,
@@ -151,10 +206,12 @@ fun AddAppsBottomSheet(
                         Spacer(modifier = Modifier.width(8.dp))
                         IconButton(
                             onClick = {
-                                if (isAdded) {
-                                    viewModel.removeAppFromHome(app.packageName)
+                                if (selectedTarget == AddAppsTarget.HOME) {
+                                    if (isAdded) viewModel.removeAppFromHome(app.packageName)
+                                    else viewModel.addAppToHome(app.packageName)
                                 } else {
-                                    viewModel.addAppToHome(app.packageName)
+                                    if (isAdded) viewModel.removeAppFromDock(app.packageName)
+                                    else viewModel.addAppToDock(app.packageName)
                                 }
                             },
                             colors = IconButtonDefaults.iconButtonColors(
