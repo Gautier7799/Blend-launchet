@@ -771,15 +771,15 @@ fun AppDrawer(
             }
 
             // In-Drawer Live Search Field
-            OutlinedTextField(
+            TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Rechercher dans les applications...", color = Color.White.copy(alpha = 0.6f)) },
+                placeholder = { Text("Rechercher dans les applications...", color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Rechercher",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 },
                 trailingIcon = {
@@ -788,20 +788,21 @@ fun AppDrawer(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Effacer",
-                                tint = Color.White
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(20.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                    focusedContainerColor = Color.White.copy(alpha = 0.10f),
-                    unfocusedContainerColor = Color.White.copy(alpha = 0.06f)
+                shape = CircleShape,
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    focusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
                 ),
                 modifier = Modifier
                     .fillMaxWidth()

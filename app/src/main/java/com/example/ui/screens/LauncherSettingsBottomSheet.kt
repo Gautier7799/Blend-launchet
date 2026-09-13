@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -115,7 +116,11 @@ fun LauncherSettingsBottomSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .clickable { isWallpaperPickerOpen = true }
+                            .clickable { 
+                                val intent = Intent(Intent.ACTION_SET_WALLPAPER)
+                                context.startActivity(Intent.createChooser(intent, "Choisir un fond d'écran"))
+                                onDismissRequest()
+                            }
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -142,7 +147,7 @@ fun LauncherSettingsBottomSheet(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Galerie photo ou dégradés AMOLED / Émeraude",
+                                text = "Changer le fond d'écran du système",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
