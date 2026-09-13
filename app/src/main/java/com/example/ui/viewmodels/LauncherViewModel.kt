@@ -23,8 +23,10 @@ data class LauncherSettings(
     val themedIcons: Boolean = false,
     val dockOpacity: Float = 0.35f,
     val doubleTapToSleep: Boolean = true,
-    val dynamicIslandEnabled: Boolean = true,
-    val hapticFeedback: Boolean = true
+    val dynamicIslandEnabled: Boolean = false,
+    val hapticFeedback: Boolean = true,
+    val fullscreenMode: Boolean = false,
+    val hideDrawerHeader: Boolean = false
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -54,8 +56,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             themedIcons = prefs.getBoolean("themed_icons", false),
             dockOpacity = prefs.getFloat("dock_opacity", 0.35f),
             doubleTapToSleep = prefs.getBoolean("double_tap_sleep", true),
-            dynamicIslandEnabled = prefs.getBoolean("dynamic_island", true),
-            hapticFeedback = prefs.getBoolean("haptic_feedback", true)
+            dynamicIslandEnabled = prefs.getBoolean("dynamic_island", false),
+            hapticFeedback = prefs.getBoolean("haptic_feedback", true),
+            fullscreenMode = prefs.getBoolean("fullscreen_mode", false),
+            hideDrawerHeader = prefs.getBoolean("hide_drawer_header", false)
         )
     }
 
@@ -71,7 +75,18 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putBoolean("double_tap_sleep", newSettings.doubleTapToSleep)
             .putBoolean("dynamic_island", newSettings.dynamicIslandEnabled)
             .putBoolean("haptic_feedback", newSettings.hapticFeedback)
+            .putBoolean("fullscreen_mode", newSettings.fullscreenMode)
+            .putBoolean("hide_drawer_header", newSettings.hideDrawerHeader)
             .apply()
+    }
+
+    fun reorderHomeApps(fromIndex: Int, toIndex: Int) {
+        val current = _homeAppPackages.value.toMutableList()
+        if (fromIndex in current.indices && toIndex in current.indices && fromIndex != toIndex) {
+            val item = current.removeAt(fromIndex)
+            current.add(toIndex, item)
+            saveHomeAppPackages(current)
+        }
     }
 
     fun isAccessibilityServiceEnabled(): Boolean {

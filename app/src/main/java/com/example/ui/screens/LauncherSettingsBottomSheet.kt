@@ -307,6 +307,34 @@ fun LauncherSettingsBottomSheet(
                         checked = settings.hapticFeedback,
                         onCheckedChange = { viewModel.updateSettings(settings.copy(hapticFeedback = it)) }
                     )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Fullscreen Immersive Mode Toggle
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Fullscreen,
+                        title = "Mode Plein Écran Immersif",
+                        subtitle = "Masquer la barre d'état (en haut) et la barre de navigation (en bas)",
+                        checked = settings.fullscreenMode,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(fullscreenMode = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Minimal Drawer Header Toggle
+                    SettingsSwitchRow(
+                        icon = Icons.Default.VerticalSplit,
+                        title = "Épurer le tiroir d'applications",
+                        subtitle = "Masquer le grand titre supérieur pour afficher directement les icônes",
+                        checked = settings.hideDrawerHeader,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(hideDrawerHeader = it)) }
+                    )
                 }
             }
 

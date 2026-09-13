@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.os.Build
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
 import com.example.domain.AppItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -31,12 +33,18 @@ class AppRepository(private val context: Context) {
             try {
                 val label = resolveInfo.loadLabel(pm).toString()
                 val packageName = resolveInfo.activityInfo.packageName
-                val icon = resolveInfo.loadIcon(pm)
-                
+                val iconDrawable = resolveInfo.loadIcon(pm)
+                val iconBitmap = try {
+                    iconDrawable.toBitmap(width = 128, height = 128).asImageBitmap()
+                } catch (_: Throwable) {
+                    null
+                }
+
                 AppItem(
                     label = label,
                     packageName = packageName,
-                    icon = icon
+                    icon = iconDrawable,
+                    iconBitmap = iconBitmap
                 )
             } catch (e: Exception) {
                 null
@@ -44,3 +52,4 @@ class AppRepository(private val context: Context) {
         }.sortedBy { it.label.lowercase() }
     }
 }
+

@@ -8,13 +8,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,18 +25,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -54,6 +53,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import coil.compose.AsyncImage
 import com.example.domain.AppItem
 import com.example.ui.screens.AddAppsBottomSheet
@@ -95,6 +97,7 @@ class MainActivity : ComponentActivity() {
 fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val activity = context as? ComponentActivity
     val apps by viewModel.installedApps.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val homeAppPackages by viewModel.homeAppPackages.collectAsState()
@@ -102,7 +105,24 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
     var isDrawerOpen by remember { mutableStateOf(false) }
     var isSettingsOpen by remember { mutableStateOf(false) }
     var isAddAppsOpen by remember { mutableStateOf(false) }
+    var isReorderingMode by remember { mutableStateOf(false) }
     var selectedActionApp by remember { mutableStateOf<AppItem?>(null) }
+
+    // Fullscreen Immersive Mode: Hides top status bar and bottom navigation bar
+    LaunchedEffect(settings.fullscreenMode, activity) {
+        activity?.window?.let { window ->
+            val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+            if (settings.fullscreenMode) {
+                insetsController.hide(WindowInsetsCompat.Type.statusBars())
+                insetsController.hide(WindowInsetsCompat.Type.navigationBars())
+                insetsController.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                insetsController.show(WindowInsetsCompat.Type.statusBars())
+                insetsController.show(WindowInsetsCompat.Type.navigationBars())
+            }
+        }
+    }
 
     val dockApps = remember(apps, settings.dockCount) {
         apps.take(settings.dockCount)
@@ -113,14 +133,25 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
         homeAppPackages.mapNotNull { appMap[it] }
     }
 
+    val infiniteTransition = rememberInfiniteTransition(label = "wobble_transition")
+    val wobbleAngle by infiniteTransition.animateFloat(
+        initialValue = -2.2f,
+        targetValue = 2.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(130, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "wobble_angle"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
-            .pointerInput(settings.doubleTapToSleep, settings.hapticFeedback) {
+            .pointerInput(settings.doubleTapToSleep, settings.hapticFeedback, isReorderingMode) {
                 detectTapGestures(
                     onDoubleTap = {
-                        if (settings.doubleTapToSleep) {
+                        if (settings.doubleTapToSleep && !isReorderingMode) {
                             if (settings.hapticFeedback) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
@@ -135,16 +166,18 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                     }
                 )
             }
-            .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    // Detect Swipe Up to open drawer
-                    if (dragAmount.y < -50) {
-                        isDrawerOpen = true
-                    }
-                    // Detect Swipe Down to close drawer
-                    else if (dragAmount.y > 50 && isDrawerOpen) {
-                        isDrawerOpen = false
+            .pointerInput(isReorderingMode) {
+                if (!isReorderingMode) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        // Detect Swipe Up to open drawer
+                        if (dragAmount.y < -50) {
+                            isDrawerOpen = true
+                        }
+                        // Detect Swipe Down to close drawer
+                        else if (dragAmount.y > 50 && isDrawerOpen) {
+                            isDrawerOpen = false
+                        }
                     }
                 }
             }
@@ -153,10 +186,56 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = if (settings.dynamicIslandEnabled) 36.dp else 64.dp, start = 16.dp, end = 16.dp)
+                .padding(
+                    top = if (settings.dynamicIslandEnabled) 36.dp else if (settings.fullscreenMode) 20.dp else 56.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                )
         ) {
+            // Reordering Mode Notification Banner
+            if (isReorderingMode) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f),
+                    shadowElevation = 8.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.OpenWith,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Glissez les icônes pour changer d'ordre",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Button(
+                            onClick = { isReorderingMode = false },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text("Terminer", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
             // iOS: Dynamic Island Pill Widget
-            if (settings.dynamicIslandEnabled) {
+            if (settings.dynamicIslandEnabled && !isReorderingMode) {
                 DynamicIslandWidget(
                     onSearchClick = onSearchClick,
                     onSettingsClick = { isSettingsOpen = true },
@@ -171,71 +250,114 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
             }
 
             // Pixel: At A Glance & Search Bar
-            AtAGlanceWidget(
-                onSearchClick = onSearchClick,
-                onSettingsClick = { isSettingsOpen = true }
-            )
+            if (!isReorderingMode) {
+                AtAGlanceWidget(
+                    onSearchClick = onSearchClick,
+                    onSettingsClick = { isSettingsOpen = true }
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+            }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Home Screen Grid
+            // Home Screen Grid with dynamic reordering
             LazyVerticalGrid(
                 columns = GridCells.Fixed(settings.gridColumns),
-                contentPadding = PaddingValues(bottom = 120.dp),
+                contentPadding = PaddingValues(bottom = 130.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                items(homeApps) { app ->
-                    AppIconItem(
+                itemsIndexed(
+                    items = homeApps,
+                    key = { _, app -> app.packageName }
+                ) { index, app ->
+                    ReorderableHomeAppItem(
                         app = app,
+                        index = index,
+                        totalCount = homeApps.size,
+                        isReordering = isReorderingMode,
+                        wobbleAngle = if (index % 2 == 0) wobbleAngle else -wobbleAngle,
                         showLabel = settings.showLabels,
                         iconSize = settings.iconSizeDp.dp,
                         themedIcon = settings.themedIcons,
-                        onClick = { viewModel.launchApp(app.packageName) },
-                        onLongClick = { selectedActionApp = app }
+                        onClick = {
+                            if (!isReorderingMode) {
+                                viewModel.launchApp(app.packageName)
+                            }
+                        },
+                        onLongClick = {
+                            if (!isReorderingMode) {
+                                if (settings.hapticFeedback) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                                selectedActionApp = app
+                            }
+                        },
+                        onMoveLeft = {
+                            if (index > 0) {
+                                if (settings.hapticFeedback) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                                viewModel.reorderHomeApps(index, index - 1)
+                            }
+                        },
+                        onMoveRight = {
+                            if (index < homeApps.size - 1) {
+                                if (settings.hapticFeedback) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                                viewModel.reorderHomeApps(index, index + 1)
+                            }
+                        },
+                        onRemove = {
+                            if (settings.hapticFeedback) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                            viewModel.removeAppFromHome(app.packageName)
+                        }
                     )
                 }
 
                 // Add Apps "+" Button Slot
-                item {
-                    Column(
-                        modifier = Modifier
-                            .padding(6.dp)
-                            .clickable { isAddAppsOpen = true },
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
+                if (!isReorderingMode) {
+                    item {
+                        Column(
                             modifier = Modifier
-                                .size(settings.iconSizeDp.dp)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(Color.White.copy(alpha = 0.22f))
-                                .border(
-                                    width = 1.dp,
-                                    color = Color.White.copy(alpha = 0.45f),
-                                    shape = RoundedCornerShape(18.dp)
-                                ),
-                            contentAlignment = Alignment.Center
+                                .padding(6.dp)
+                                .clickable { isAddAppsOpen = true },
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Ajouter",
-                                tint = Color.White,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                        if (settings.showLabels) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Ajouter",
-                                fontSize = 11.sp,
-                                color = Color.White,
-                                style = androidx.compose.ui.text.TextStyle(
-                                    shadow = androidx.compose.ui.graphics.Shadow(
-                                        color = Color.Black.copy(alpha = 0.7f),
-                                        blurRadius = 6f
-                                    )
-                                ),
-                                fontWeight = FontWeight.Medium
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(settings.iconSizeDp.dp)
+                                    .clip(RoundedCornerShape(18.dp))
+                                    .background(Color.White.copy(alpha = 0.22f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = Color.White.copy(alpha = 0.45f),
+                                        shape = RoundedCornerShape(18.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Ajouter",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            if (settings.showLabels) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Ajouter",
+                                    fontSize = 11.sp,
+                                    color = Color.White,
+                                    style = androidx.compose.ui.text.TextStyle(
+                                        shadow = androidx.compose.ui.graphics.Shadow(
+                                            color = Color.Black.copy(alpha = 0.7f),
+                                            blurRadius = 6f
+                                        )
+                                    ),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
                 }
@@ -243,7 +365,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
         }
 
         // --- iOS: Ultra-Premium Glassmorphism Dock ---
-        if (!isDrawerOpen) {
+        if (!isDrawerOpen && !isReorderingMode) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -296,11 +418,11 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
             visible = isDrawerOpen,
             enter = slideInVertically(
                 initialOffsetY = { it },
-                animationSpec = tween(durationMillis = 300)
+                animationSpec = tween(durationMillis = 280)
             ),
             exit = slideOutVertically(
                 targetOffsetY = { it },
-                animationSpec = tween(durationMillis = 300)
+                animationSpec = tween(durationMillis = 280)
             ),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
@@ -324,6 +446,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel, onSearchClick: () -> Unit)
                 isOnHome = isOnHome,
                 canMoveLeft = isOnHome && homeIndex > 0,
                 canMoveRight = isOnHome && homeIndex < homeAppPackages.size - 1,
+                onStartReorder = { isReorderingMode = true },
                 onDismissRequest = { selectedActionApp = null }
             )
         }
@@ -454,66 +577,73 @@ fun AppDrawer(
     }
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding(),
+        color = Color(0xFF121418), // 100% OPAQUE - completely hides home screen widgets and prevents ghosting
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 48.dp, start = 16.dp, end = 16.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            // Header Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Applications",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                    ) {
+            if (!settings.hideDrawerHeader) {
+                // Header Bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "${filteredApps.size}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            text = "Applications",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                        ) {
+                            Text(
+                                text = "${filteredApps.size}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
                     }
-                }
 
-                Row {
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Paramètres",
-                            tint = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Fermer",
-                            tint = MaterialTheme.colorScheme.onBackground
-                        )
+                    Row {
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Paramètres",
+                                tint = Color.White
+                            )
+                        }
+                        IconButton(onClick = onClose) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Fermer",
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
+            } else {
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             // In-Drawer Live Search Field
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Rechercher dans les applications...") },
+                placeholder = { Text("Rechercher dans les applications...", color = Color.White.copy(alpha = 0.6f)) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -526,7 +656,8 @@ fun AppDrawer(
                         IconButton(onClick = { searchQuery = "" }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Effacer"
+                                contentDescription = "Effacer",
+                                tint = Color.White
                             )
                         }
                     }
@@ -534,26 +665,31 @@ fun AppDrawer(
                 singleLine = true,
                 shape = RoundedCornerShape(20.dp),
                 colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f)
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                    focusedContainerColor = Color.White.copy(alpha = 0.10f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.06f)
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp)
+                    .padding(bottom = 12.dp)
             )
 
-            // Grid of Filtered Apps
+            // Grid of Filtered Apps with stable keys to prevent lag
             LazyVerticalGrid(
                 columns = GridCells.Fixed(settings.gridColumns),
-                contentPadding = PaddingValues(bottom = 40.dp),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                items(filteredApps) { app ->
+                items(
+                    items = filteredApps,
+                    key = { it.packageName }
+                ) { app ->
                     AppIconItem(
                         app = app,
-                        textColor = MaterialTheme.colorScheme.onBackground,
+                        textColor = Color.White,
                         shadow = false,
                         showLabel = settings.showLabels,
                         iconSize = settings.iconSizeDp.dp,
@@ -608,15 +744,28 @@ fun AppIconItem(
             ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AsyncImage(
-            model = app.icon,
-            contentDescription = app.label,
-            colorFilter = themedColorFilter,
-            modifier = Modifier
-                .size(iconSize)
-                .clip(RoundedCornerShape(18.dp)),
-            contentScale = ContentScale.Crop
-        )
+        if (app.iconBitmap != null) {
+            Image(
+                bitmap = app.iconBitmap,
+                contentDescription = app.label,
+                colorFilter = themedColorFilter,
+                modifier = Modifier
+                    .size(iconSize)
+                    .clip(RoundedCornerShape(18.dp)),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            AsyncImage(
+                model = app.icon,
+                contentDescription = app.label,
+                colorFilter = themedColorFilter,
+                modifier = Modifier
+                    .size(iconSize)
+                    .clip(RoundedCornerShape(18.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+
         if (showLabel) {
             Spacer(modifier = Modifier.height(4.dp))
             val textStyle = if (shadow) {
@@ -640,6 +789,169 @@ fun AppIconItem(
                 style = textStyle,
                 fontWeight = FontWeight.Medium
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun ReorderableHomeAppItem(
+    app: AppItem,
+    index: Int,
+    totalCount: Int,
+    isReordering: Boolean,
+    wobbleAngle: Float,
+    showLabel: Boolean,
+    iconSize: Dp,
+    themedIcon: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onMoveLeft: () -> Unit,
+    onMoveRight: () -> Unit,
+    onRemove: () -> Unit
+) {
+    var accumulatedDragX by remember { mutableFloatStateOf(0f) }
+
+    val themedColorFilter = if (themedIcon) {
+        ColorFilter.tint(MaterialTheme.colorScheme.primary)
+    } else {
+        null
+    }
+
+    Box(
+        modifier = Modifier
+            .padding(6.dp)
+            .rotate(if (isReordering) wobbleAngle else 0f)
+            .then(
+                if (isReordering) {
+                    Modifier.pointerInput(index) {
+                        detectDragGestures(
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                accumulatedDragX += dragAmount.x
+                                if (accumulatedDragX > 60f) {
+                                    accumulatedDragX = 0f
+                                    onMoveRight()
+                                } else if (accumulatedDragX < -60f) {
+                                    accumulatedDragX = 0f
+                                    onMoveLeft()
+                                }
+                            },
+                            onDragEnd = { accumulatedDragX = 0f },
+                            onDragCancel = { accumulatedDragX = 0f }
+                        )
+                    }
+                } else {
+                    Modifier.combinedClickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = onClick,
+                        onLongClick = onLongClick
+                    )
+                }
+            ),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (app.iconBitmap != null) {
+                Image(
+                    bitmap = app.iconBitmap,
+                    contentDescription = app.label,
+                    colorFilter = themedColorFilter,
+                    modifier = Modifier
+                        .size(iconSize)
+                        .clip(RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                AsyncImage(
+                    model = app.icon,
+                    contentDescription = app.label,
+                    colorFilter = themedColorFilter,
+                    modifier = Modifier
+                        .size(iconSize)
+                        .clip(RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            if (showLabel) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = app.label,
+                    fontSize = 11.sp,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    style = androidx.compose.ui.text.TextStyle(
+                        shadow = androidx.compose.ui.graphics.Shadow(
+                            color = Color.Black.copy(alpha = 0.7f),
+                            blurRadius = 6f
+                        )
+                    ),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // In Reorder mode: Arrow nudges for fine tactile control
+            if (isReordering) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (index > 0) {
+                        IconButton(
+                            onClick = onMoveLeft,
+                            modifier = Modifier.size(22.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Déplacer à gauche",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    if (index < totalCount - 1) {
+                        IconButton(
+                            onClick = onMoveRight,
+                            modifier = Modifier.size(22.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Déplacer à droite",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // In Reorder Mode: Top-Right Remove Badge (-)
+        if (isReordering) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 6.dp, y = (-4).dp)
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE53935))
+                    .clickable { onRemove() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Supprimer",
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
     }
 }

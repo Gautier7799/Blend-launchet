@@ -22,6 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.OpenWith
 import coil.compose.AsyncImage
 import com.example.domain.AppItem
 import com.example.ui.viewmodels.LauncherViewModel
@@ -34,6 +36,7 @@ fun AppActionBottomSheet(
     isOnHome: Boolean,
     canMoveLeft: Boolean,
     canMoveRight: Boolean,
+    onStartReorder: (() -> Unit)? = null,
     onDismissRequest: () -> Unit
 ) {
     val context = LocalContext.current
@@ -60,14 +63,25 @@ fun AppActionBottomSheet(
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AsyncImage(
-                    model = app.icon,
-                    contentDescription = app.label,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(16.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                if (app.iconBitmap != null) {
+                    Image(
+                        bitmap = app.iconBitmap,
+                        contentDescription = app.label,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(16.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    AsyncImage(
+                        model = app.icon,
+                        contentDescription = app.label,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(16.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -115,6 +129,18 @@ fun AppActionBottomSheet(
                         onDismissRequest()
                     }
                 )
+
+                if (onStartReorder != null) {
+                    ActionItemRow(
+                        icon = Icons.Default.OpenWith,
+                        title = "Mode déplacement / Réorganiser les icônes",
+                        tint = MaterialTheme.colorScheme.primary,
+                        onClick = {
+                            onDismissRequest()
+                            onStartReorder()
+                        }
+                    )
+                }
 
                 // Move Actions (Only if on Home)
                 if (canMoveLeft || canMoveRight) {
