@@ -93,14 +93,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Remove status and navigation bar scrims and shadows
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            window.isNavigationBarContrastEnforced = false
-            window.isStatusBarContrastEnforced = false
-        }
-        window.statusBarColor = android.graphics.Color.TRANSPARENT
-        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        applyImmersiveMode()
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(
@@ -118,6 +111,26 @@ class MainActivity : ComponentActivity() {
                 BlendLauncherScreen(viewModel = viewModel)
             }
         }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            applyImmersiveMode()
+        }
+    }
+
+    private fun applyImmersiveMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
+        }
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        insetsController.hide(WindowInsetsCompat.Type.systemBars())
+        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
     @Deprecated("Deprecated in Java")
@@ -289,10 +302,10 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                         Spacer(modifier = Modifier.height(14.dp))
                     }
 
-                    // Home Screen Grid with dynamic reordering (widgets are safely in the secondary dashboard to avoid overlap)
+                    // Home Screen Grid with dynamic reordering (strict boundary to guarantee no overlap with dock)
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(settings.gridColumns),
-                        contentPadding = PaddingValues(bottom = 145.dp),
+                        contentPadding = PaddingValues(top = 8.dp, start = 8.dp, end = 8.dp, bottom = 170.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         // App Grid Items
@@ -313,6 +326,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                         onClick = {
                             if (!isReorderingMode) {
                                 viewModel.launchApp(app.packageName)
+                            } else {
+                                isReorderingMode = false
                             }
                         },
                         onLongClick = {
@@ -346,11 +361,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             viewModel.removeAppFromHome(app.packageName)
                             viewModel.addAppToDock(app.packageName)
                         },
-                        onRemove = {
-                            if (settings.hapticFeedback) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            }
-                            viewModel.removeAppFromHome(app.packageName)
+                        onTapToExit = {
+                            isReorderingMode = false
                         }
                     )
                 }
@@ -426,40 +438,20 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
         if (!isDrawerOpen) {
             var dockDragAmount by remember { mutableFloatStateOf(0f) }
 
-            // Gesture handle pill above dock indicating swipe up with 48dp minimum touch target
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = if (isReorderingMode) 116.dp else 102.dp)
-                    .width(64.dp)
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "Ouvrir le tiroir d'applications"
-                    }
-                    .clickable(
-                        role = Role.Button,
-                        onClickLabel = "Ouvrir le tiroir d'applications",
-                        onClick = { isDrawerOpen = true }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(42.dp)
-                        .height(4.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.65f))
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp, start = 16.dp, end = 16.dp)
+                    .padding(bottom = 20.dp, start = 16.dp, end = 16.dp)
                     .fillMaxWidth()
-                    .height(if (isReorderingMode) 108.dp else 94.dp)
+                    .height(92.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        if (isReorderingMode) {
+                            isReorderingMode = false
+                        }
+                    }
                     .pointerInput(isReorderingMode) {
                         if (!isReorderingMode) {
                             detectVerticalDragGestures(
@@ -521,12 +513,20 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             wobbleAngle = wobbleAngle,
                             iconSize = (settings.iconSizeDp - 6).dp,
                             themedIcon = settings.themedIcons,
-                            onClick = { viewModel.launchApp(app.packageName) },
-                            onLongClick = {
-                                if (settings.hapticFeedback) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onClick = { 
+                                if (!isReorderingMode) {
+                                    viewModel.launchApp(app.packageName)
+                                } else {
+                                    isReorderingMode = false
                                 }
-                                selectedActionApp = app
+                            },
+                            onLongClick = {
+                                if (!isReorderingMode) {
+                                    if (settings.hapticFeedback) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                    selectedActionApp = app
+                                }
                             },
                             onMoveLeft = {
                                 if (index > 0) {
@@ -551,11 +551,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                                 viewModel.removeAppFromDock(app.packageName)
                                 viewModel.addAppToHome(app.packageName)
                             },
-                            onRemove = {
-                                if (settings.hapticFeedback) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                }
-                                viewModel.removeAppFromDock(app.packageName)
+                            onTapToExit = {
+                                isReorderingMode = false
                             }
                         )
                     }
@@ -958,12 +955,13 @@ fun ReorderableHomeAppItem(
     onMoveLeft: () -> Unit,
     onMoveRight: () -> Unit,
     onMoveToDock: () -> Unit,
-    onRemove: () -> Unit
+    onTapToExit: () -> Unit
 ) {
     var accumulatedDragX by remember { mutableFloatStateOf(0f) }
     var accumulatedDragY by remember { mutableFloatStateOf(0f) }
     var visualOffsetX by remember { mutableFloatStateOf(0f) }
     var visualOffsetY by remember { mutableFloatStateOf(0f) }
+    var dragDistance by remember { mutableFloatStateOf(0f) }
     val animatedOffsetX by animateFloatAsState(targetValue = visualOffsetX, label = "home_reorder_x")
     val animatedOffsetY by animateFloatAsState(targetValue = visualOffsetY, label = "home_reorder_y")
 
@@ -978,8 +976,12 @@ fun ReorderableHomeAppItem(
                 if (isReordering) {
                     Modifier.pointerInput(index) {
                         detectDragGestures(
+                            onDragStart = {
+                                dragDistance = 0f
+                            },
                             onDrag = { change, dragAmount ->
                                 change.consume()
+                                dragDistance += kotlin.math.abs(dragAmount.x) + kotlin.math.abs(dragAmount.y)
                                 accumulatedDragX += dragAmount.x
                                 accumulatedDragY += dragAmount.y
                                 visualOffsetX += dragAmount.x
@@ -1002,6 +1004,9 @@ fun ReorderableHomeAppItem(
                                 }
                             },
                             onDragEnd = { 
+                                if (dragDistance < 10f) {
+                                    onTapToExit()
+                                }
                                 accumulatedDragX = 0f
                                 accumulatedDragY = 0f
                                 visualOffsetX = 0f
@@ -1082,41 +1087,6 @@ fun ReorderableHomeAppItem(
                 )
             }
         }
-
-        // In Reorder Mode: Top-Right Remove Badge (-) with 48dp touch target
-        if (isReordering) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 8.dp, y = (-6).dp)
-                    .size(48.dp)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "Supprimer ${app.label} de l'écran d'accueil"
-                    }
-                    .clickable(
-                        role = Role.Button,
-                        onClickLabel = "Supprimer de l'écran d'accueil",
-                        onClick = onRemove
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFE53935)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Supprimer ${app.label}",
-                        tint = Color.White,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -1135,12 +1105,13 @@ fun ReorderableDockAppItem(
     onMoveLeft: () -> Unit,
     onMoveRight: () -> Unit,
     onMoveToHome: () -> Unit,
-    onRemove: () -> Unit
+    onTapToExit: () -> Unit
 ) {
     var accumulatedDragX by remember { mutableFloatStateOf(0f) }
     var accumulatedDragY by remember { mutableFloatStateOf(0f) }
     var visualOffsetX by remember { mutableFloatStateOf(0f) }
     var visualOffsetY by remember { mutableFloatStateOf(0f) }
+    var dragDistance by remember { mutableFloatStateOf(0f) }
     val animatedOffsetX by animateFloatAsState(targetValue = visualOffsetX, label = "dock_reorder_x")
     val animatedOffsetY by animateFloatAsState(targetValue = visualOffsetY, label = "dock_reorder_y")
 
@@ -1155,8 +1126,12 @@ fun ReorderableDockAppItem(
                 if (isReordering) {
                     Modifier.pointerInput(index) {
                         detectDragGestures(
+                            onDragStart = {
+                                dragDistance = 0f
+                            },
                             onDrag = { change, dragAmount ->
                                 change.consume()
+                                dragDistance += kotlin.math.abs(dragAmount.x) + kotlin.math.abs(dragAmount.y)
                                 accumulatedDragX += dragAmount.x
                                 accumulatedDragY += dragAmount.y
                                 visualOffsetX += dragAmount.x
@@ -1178,6 +1153,9 @@ fun ReorderableDockAppItem(
                                 }
                             },
                             onDragEnd = { 
+                                if (dragDistance < 10f) {
+                                    onTapToExit()
+                                }
                                 accumulatedDragX = 0f
                                 accumulatedDragY = 0f
                                 visualOffsetX = 0f
@@ -1234,80 +1212,6 @@ fun ReorderableDockAppItem(
                         .clip(RoundedCornerShape(18.dp)),
                     contentScale = ContentScale.Crop
                 )
-            }
-
-            if (isReordering) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (index > 0) {
-                        IconButton(
-                            onClick = onMoveLeft,
-                            modifier = Modifier
-                                .size(32.dp)
-                                .minimumInteractiveComponentSize()
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Déplacer ${app.label} à gauche",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    if (index < totalCount - 1) {
-                        IconButton(
-                            onClick = onMoveRight,
-                            modifier = Modifier
-                                .size(32.dp)
-                                .minimumInteractiveComponentSize()
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = "Déplacer ${app.label} à droite",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // In Reorder Mode: Top-Right Remove Badge (-) with 48dp minimum touch target
-        if (isReordering) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 6.dp, y = (-6).dp)
-                    .size(48.dp)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "Retirer ${app.label} du dock"
-                    }
-                    .clickable(
-                        role = Role.Button,
-                        onClickLabel = "Retirer du dock",
-                        onClick = onRemove
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFE53935)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Retirer ${app.label} du dock",
-                        tint = Color.White,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
             }
         }
     }

@@ -3,11 +3,13 @@ package com.example.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioManager
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.provider.MediaStore
 import android.provider.Settings
+import android.view.KeyEvent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -190,7 +192,21 @@ fun MusicPlayerCard(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    var isPlaying by remember { mutableStateOf(false) }
+    val audioManager = remember {
+        try {
+            context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        } catch (_: Exception) {
+            null
+        }
+    }
+    var isPlaying by remember { mutableStateOf(audioManager?.isMusicActive == true) }
+
+    fun sendMediaKey(keyCode: Int) {
+        try {
+            audioManager?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+            audioManager?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+        } catch (_: Exception) {}
+    }
 
     Surface(
         onClick = {
@@ -245,7 +261,7 @@ fun MusicPlayerCard(
             Spacer(modifier = Modifier.width(14.dp))
 
             Text(
-                text = if (isPlaying) "Pixel Music • Lecture" else "Pixel Music",
+                text = if (isPlaying) "Pixel Music • En lecture" else "Pixel Music",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF1E211E),
@@ -260,6 +276,7 @@ fun MusicPlayerCard(
                     if (settings.hapticFeedback) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
+                    sendMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
                     isPlaying = !isPlaying
                 },
                 shape = RoundedCornerShape(14.dp),
@@ -286,6 +303,7 @@ fun MusicPlayerCard(
                     if (settings.hapticFeedback) {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     }
+                    sendMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT)
                 },
                 shape = RoundedCornerShape(14.dp),
                 color = Color(0xFFE2E6DF),

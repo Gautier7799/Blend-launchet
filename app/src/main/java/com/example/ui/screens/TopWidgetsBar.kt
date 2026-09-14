@@ -59,9 +59,12 @@ fun TopWidgetsBar(
         val dateFormat = SimpleDateFormat("EEE d MMM", Locale.getDefault())
         while (true) {
             val now = Date()
-            currentTimeString = timeFormat.format(now)
-            currentDateString = dateFormat.format(now).replaceFirstChar { it.uppercase() }
-            delay(1000)
+            val newTime = timeFormat.format(now)
+            if (newTime != currentTimeString) {
+                currentTimeString = newTime
+                currentDateString = dateFormat.format(now).replaceFirstChar { it.uppercase() }
+            }
+            delay(2000)
         }
     }
 
