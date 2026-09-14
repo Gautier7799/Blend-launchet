@@ -3,8 +3,10 @@ package com.example.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -58,6 +60,11 @@ fun MinusOneScreen(
     ) {
         // 1. Google Web Search Bar
         item(key = "google_search_bar") {
+            val isDark = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
+            val searchTrayColor = if (isDark) Color(0xFF232731).copy(alpha = 0.85f) else Color(0xFFE8ECF2).copy(alpha = 0.95f)
+            val searchTrayBorder = if (isDark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.08f)
+            val searchTrayContent = if (isDark) Color.White else Color(0xFF1E2125)
+
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -74,24 +81,25 @@ fun MinusOneScreen(
                         } catch (_: Exception) {}
                     },
                 shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
-                shadowElevation = 4.dp
+                color = searchTrayColor,
+                border = BorderStroke(1.dp, searchTrayBorder),
+                shadowElevation = 2.dp
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        tint = searchTrayContent.copy(alpha = 0.70f),
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = "Rechercher sur le Web & Google...",
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
-                        fontSize = 15.sp
+                        color = searchTrayContent.copy(alpha = 0.60f),
+                        fontSize = 14.sp
                     )
                 }
             }

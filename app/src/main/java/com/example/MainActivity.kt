@@ -11,6 +11,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,6 +22,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -30,6 +32,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -45,6 +48,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -54,6 +58,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -476,25 +481,47 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                     .clip(RoundedCornerShape(32.dp))
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = settings.dockOpacity),
-                                Color.White.copy(alpha = settings.dockOpacity * 0.5f)
-                            )
+                            colors = if (isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled") {
+                                listOf(
+                                    Color(0xFF242832).copy(alpha = (settings.dockOpacity + 0.35f).coerceAtMost(0.88f)),
+                                    Color(0xFF161920).copy(alpha = (settings.dockOpacity + 0.20f).coerceAtMost(0.68f))
+                                )
+                            } else {
+                                listOf(
+                                    Color.White.copy(alpha = (settings.dockOpacity + 0.35f).coerceAtMost(0.88f)),
+                                    Color.White.copy(alpha = (settings.dockOpacity + 0.15f).coerceAtMost(0.62f))
+                                )
+                            }
                         )
                     )
                     .then(
                         if (settings.showDockLines) {
+                            val isDark = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
                             Modifier.border(
                                 width = 1.dp,
                                 brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0.65f),
-                                        Color.White.copy(alpha = 0.15f)
-                                    )
+                                    colors = if (isDark) {
+                                        listOf(
+                                            Color.White.copy(alpha = 0.30f),
+                                            Color.White.copy(alpha = 0.08f)
+                                        )
+                                    } else {
+                                        listOf(
+                                            Color.Black.copy(alpha = 0.16f),
+                                            Color.Black.copy(alpha = 0.05f)
+                                        )
+                                    }
                                 ),
                                 shape = RoundedCornerShape(32.dp)
                             )
-                        } else Modifier
+                        } else {
+                            val isDark = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
+                            Modifier.border(
+                                width = 1.dp,
+                                color = if (isDark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.45f),
+                                shape = RoundedCornerShape(32.dp)
+                            )
+                        }
                     )
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center
@@ -695,6 +722,15 @@ fun AppDrawer(
 
     var drawerDragY by remember { mutableFloatStateOf(0f) }
 
+    val isDarkTheme = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
+    val drawerBgColor = if (isDarkTheme) Color(0xEE111520) else Color(0xF5F6F8FB)
+    val drawerBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f)
+    val handleColor = if (isDarkTheme) Color.White.copy(alpha = 0.40f) else Color.Black.copy(alpha = 0.25f)
+    val trayBgColor = if (isDarkTheme) Color(0xFF232731).copy(alpha = 0.85f) else Color(0xFFE8ECF2).copy(alpha = 0.95f)
+    val trayBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.08f)
+    val trayContentColor = if (isDarkTheme) Color.White else Color(0xFF1E2125)
+    val appItemTextColor = if (isDarkTheme) Color.White else Color(0xFF1F2124)
+
     Surface(
         modifier = Modifier
             .fillMaxSize()
@@ -719,8 +755,8 @@ fun AppDrawer(
                     }
                 )
             },
-        color = Color(0xEE111520), // Flou / Blurred translucent dark glass instead of solid black
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
+        color = drawerBgColor,
+        border = BorderStroke(1.dp, drawerBorderColor)
     ) {
         Column(
             modifier = Modifier
@@ -739,83 +775,98 @@ fun AppDrawer(
                         .width(38.dp)
                         .height(4.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.45f))
+                        .background(handleColor)
                 )
             }
 
-            // Compact Top Bar: Integrated Sleek Search Bar with Settings Gear (Removed Applications title and Close X as requested)
+            // Compact Top Bar: Integrated Sleek Search Bar Tray with Settings Gear Button
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // In-Drawer Live Search Field
-                TextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = {
-                        Text(
-                            "Rechercher (${filteredApps.size})...",
-                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
-                            fontSize = 14.sp
-                        )
-                    },
-                    leadingIcon = {
+                // In-Drawer Live Search Field Capsule / Tray
+                Surface(
+                    shape = CircleShape,
+                    color = trayBgColor,
+                    border = BorderStroke(1.dp, trayBorderColor),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(46.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Further reduced search icon size to 15.dp, cleanly aligned with the tray
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Rechercher",
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(20.dp)
+                            tint = trayContentColor.copy(alpha = 0.65f),
+                            modifier = Modifier.size(15.dp)
                         )
-                    },
-                    trailingIcon = {
+                        Spacer(modifier = Modifier.width(10.dp))
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            singleLine = true,
+                            textStyle = TextStyle(
+                                color = trayContentColor,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Normal
+                            ),
+                            cursorBrush = SolidColor(trayContentColor),
+                            modifier = Modifier.weight(1f),
+                            decorationBox = { innerTextField ->
+                                Box(contentAlignment = Alignment.CenterStart) {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            "Rechercher (${filteredApps.size})...",
+                                            color = trayContentColor.copy(alpha = 0.55f),
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
+                        )
                         if (searchQuery.isNotEmpty()) {
                             IconButton(
                                 onClick = { searchQuery = "" },
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Effacer la recherche",
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(18.dp)
+                                    tint = trayContentColor.copy(alpha = 0.70f),
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                         }
-                    },
-                    singleLine = true,
-                    shape = CircleShape,
-                    colors = TextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        focusedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 48.dp)
-                )
+                    }
+                }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Compact Settings Gear Icon Button (Only Gear kept as requested: "اترك الترس والغي الباقي")
-                IconButton(
+                // Compact Settings Gear Icon Button (Tray styled, height 46.dp matching search tray)
+                Surface(
                     onClick = onSettingsClick,
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f))
+                    shape = CircleShape,
+                    color = trayBgColor,
+                    border = BorderStroke(1.dp, trayBorderColor),
+                    modifier = Modifier.size(46.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Paramètres",
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Paramètres",
+                            tint = trayContentColor.copy(alpha = 0.80f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 
@@ -831,7 +882,7 @@ fun AppDrawer(
                 ) { app ->
                     AppIconItem(
                         app = app,
-                        textColor = Color.White,
+                        textColor = appItemTextColor,
                         shadow = false,
                         showLabel = settings.showLabels,
                         iconSize = settings.iconSizeDp.dp,
