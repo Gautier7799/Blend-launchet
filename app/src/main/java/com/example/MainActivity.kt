@@ -26,6 +26,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -76,6 +78,7 @@ import com.example.ui.screens.AppShortcutsCard
 import com.example.ui.screens.DeviceBatteryCard
 import com.example.ui.screens.LauncherSettingsBottomSheet
 import com.example.ui.screens.ManageHomeWidgetsBottomSheet
+import com.example.ui.screens.MinusOneScreen
 import com.example.ui.screens.MusicPlayerCard
 import com.example.ui.screens.TasksCard
 import com.example.ui.screens.TopWidgetsBar
@@ -178,6 +181,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     )
 
     var accumulatedDrag by remember { mutableFloatStateOf(0f) }
+    val pagerState = rememberPagerState(initialPage = 1, pageCount = { 2 })
 
     Box(
         modifier = Modifier
@@ -190,6 +194,11 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 .fillMaxSize()
                 .pointerInput(settings.doubleTapToSleep, settings.hapticFeedback, isReorderingMode) {
                     detectTapGestures(
+                        onTap = {
+                            if (isReorderingMode) {
+                                isReorderingMode = false
+                            }
+                        },
                         onDoubleTap = {
                             if (settings.doubleTapToSleep && !isReorderingMode) {
                                 if (settings.hapticFeedback) {
@@ -232,129 +241,61 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 }
         )
         
-        // --- Home Screen Content ---
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    top = if (settings.fullscreenMode) 24.dp else 52.dp,
-                    start = 16.dp,
-                    end = 16.dp
-                )
-        ) {
-            // Reordering Mode Notification Banner
-            if (isReorderingMode) {
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f),
-                    shadowElevation = 8.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.OpenWith,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Glissez les icônes pour changer d'ordre",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        Button(
-                            onClick = { isReorderingMode = false },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                        ) {
-                            Text("Terminer", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-
-            // Top Widgets Row (AI Assistant, Date, Weather, Battery, Clock - customizable from Settings)
-            if (!isReorderingMode) {
-                TopWidgetsBar(
+        // --- Horizontal Pager: Page 0 = Secondary Dashboard, Page 1 = Main Home Screen ---
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            if (page == 0) {
+                // Secondary Dashboard (Minus-One Screen with Google News, Smart Firestore Search, Widgets)
+                MinusOneScreen(
                     settings = settings,
+                    tasks = tasks,
+                    apps = apps,
+                    onAddTask = { viewModel.addTask(it) },
+                    onToggleTask = { viewModel.toggleTask(it) },
+                    onDeleteTask = { viewModel.deleteTask(it) },
+                    onAppClick = { viewModel.launchApp(it) },
+                    onOpenDrawer = { isDrawerOpen = true },
                     onAiClick = { isAiAssistantOpen = true },
                     onSettingsClick = { isSettingsOpen = true }
                 )
-                Spacer(modifier = Modifier.height(14.dp))
-            }
-
-            // Home Screen Grid with dynamic reordering and interactive home widgets
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(settings.gridColumns),
-                contentPadding = PaddingValues(bottom = 145.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                // 1. Device Battery Card Widget (Pixel 8 style from screenshot)
-                if (!isReorderingMode && settings.showDeviceCardWidget) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        DeviceBatteryCard(
-                            settings = settings,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
+            } else {
+                // Main Home Screen Content
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            if (isReorderingMode) {
+                                isReorderingMode = false
+                            }
+                        }
+                        .padding(
+                            top = if (settings.fullscreenMode) 24.dp else 52.dp,
+                            start = 16.dp,
+                            end = 16.dp
                         )
-                    }
-                }
-
-                // 2. Music Player Widget Card (Pixel Music style from screenshot)
-                if (!isReorderingMode && settings.showMusicWidget) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        MusicPlayerCard(
+                ) {
+                    // Top Widgets Row (AI Assistant, Date, Weather, Battery, Clock - customizable from Settings)
+                    if (!isReorderingMode) {
+                        TopWidgetsBar(
                             settings = settings,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
+                            onAiClick = { isAiAssistantOpen = true },
+                            onSettingsClick = { isSettingsOpen = true }
                         )
+                        Spacer(modifier = Modifier.height(14.dp))
                     }
-                }
 
-                // 3. Quick Tasks Widget Card ("Mes tâches" style from screenshot)
-                if (!isReorderingMode && settings.showTasksWidget) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        TasksCard(
-                            tasks = tasks,
-                            onAddTask = { viewModel.addTask(it) },
-                            onToggleTask = { viewModel.toggleTask(it) },
-                            onDeleteTask = { viewModel.deleteTask(it) },
-                            settings = settings,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
-                        )
-                    }
-                }
-
-                // 4. App Shortcuts Widget Card (اختصارات التطبيقات المتوفرة)
-                if (!isReorderingMode && settings.showAppShortcutsWidget) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        AppShortcutsCard(
-                            apps = apps,
-                            settings = settings,
-                            onAppClick = { viewModel.launchApp(it) },
-                            onOpenDrawer = { isDrawerOpen = true },
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
-                        )
-                    }
-                }
-
-                // Spacing separator if widgets are displayed
-                if (!isReorderingMode && (settings.showDeviceCardWidget || settings.showMusicWidget || settings.showTasksWidget || settings.showAppShortcutsWidget)) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                    }
-                }
-
-                // App Grid Items
+                    // Home Screen Grid with dynamic reordering (widgets are safely in the secondary dashboard to avoid overlap)
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(settings.gridColumns),
+                        contentPadding = PaddingValues(bottom = 145.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        // App Grid Items
                 itemsIndexed(
                     items = homeApps,
                     key = { _, app -> app.packageName }
@@ -478,6 +419,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 }
             }
         }
+    }
+}
 
         // --- iOS: Ultra-Premium Glassmorphism Dock with Swipe Up to Open Drawer ---
         if (!isDrawerOpen) {
@@ -753,116 +696,131 @@ fun AppDrawer(
         else apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
     }
 
+    var drawerDragY by remember { mutableFloatStateOf(0f) }
+
     Surface(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .navigationBarsPadding(),
-        color = Color(0xFF121418), // 100% OPAQUE - completely hides home screen widgets and prevents ghosting
+            .navigationBarsPadding()
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragStart = { drawerDragY = 0f },
+                    onDragEnd = {
+                        if (drawerDragY > 35f) {
+                            onClose()
+                        }
+                        drawerDragY = 0f
+                    },
+                    onDragCancel = { drawerDragY = 0f },
+                    onVerticalDrag = { change, dragAmount ->
+                        drawerDragY += dragAmount
+                        if (drawerDragY > 45f) {
+                            change.consume()
+                            onClose()
+                        }
+                    }
+                )
+            },
+        color = Color(0xEE111520), // Flou / Blurred translucent dark glass instead of solid black
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
-            if (!settings.hideDrawerHeader) {
-                // Header Bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp, bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Applications",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                        ) {
-                            Text(
-                                text = "${filteredApps.size}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-
-                    Row {
-                        IconButton(
-                            onClick = onSettingsClick,
-                            modifier = Modifier.minimumInteractiveComponentSize()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Ouvrir les paramètres du lanceur",
-                                tint = Color.White
-                            )
-                        }
-                        IconButton(
-                            onClick = onClose,
-                            modifier = Modifier.minimumInteractiveComponentSize()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Fermer le tiroir d'applications",
-                                tint = Color.White
-                            )
-                        }
-                    }
-                }
-            } else {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // In-Drawer Live Search Field
-            TextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Rechercher dans les applications...", color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)) },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Rechercher",
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(
-                            onClick = { searchQuery = "" },
-                            modifier = Modifier.minimumInteractiveComponentSize()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Effacer la recherche",
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = CircleShape,
-                colors = TextFieldDefaults.colors(
-                    focusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    focusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
-                ),
+            // Drag handle pill at the top
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-            )
+                    .padding(top = 10.dp, bottom = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(38.dp)
+                        .height(4.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.45f))
+                )
+            }
+
+            // Compact Top Bar: Integrated Sleek Search Bar with Settings Gear (Removed Applications title and Close X as requested)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // In-Drawer Live Search Field
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = {
+                        Text(
+                            "Rechercher (${filteredApps.size})...",
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                            fontSize = 14.sp
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Rechercher",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = { searchQuery = "" },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Effacer la recherche",
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = CircleShape,
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        focusedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Compact Settings Gear Icon Button (Only Gear kept as requested: "اترك الترس والغي الباقي")
+                IconButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Paramètres",
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
 
             // Grid of Filtered Apps with stable keys to prevent lag
             LazyVerticalGrid(
@@ -880,7 +838,7 @@ fun AppDrawer(
                         shadow = false,
                         showLabel = settings.showLabels,
                         iconSize = settings.iconSizeDp.dp,
-                        themedIcon = settings.themedIcons,
+                        themedIcon = false, // Keep vibrant, genuine app icon colors
                         onClick = { onAppClick(app.packageName) },
                         onLongClick = { onAppLongClick(app) }
                     )
@@ -913,11 +871,7 @@ fun AppIconItem(
         label = "icon_press_scale"
     )
 
-    val themedColorFilter = if (themedIcon) {
-        ColorFilter.tint(MaterialTheme.colorScheme.primary)
-    } else {
-        null
-    }
+    val themedColorFilter: ColorFilter? = null
 
     Column(
         modifier = Modifier
@@ -1013,11 +967,7 @@ fun ReorderableHomeAppItem(
     val animatedOffsetX by animateFloatAsState(targetValue = visualOffsetX, label = "home_reorder_x")
     val animatedOffsetY by animateFloatAsState(targetValue = visualOffsetY, label = "home_reorder_y")
 
-    val themedColorFilter = if (themedIcon) {
-        ColorFilter.tint(MaterialTheme.colorScheme.primary)
-    } else {
-        null
-    }
+    val themedColorFilter: ColorFilter? = null
 
     Box(
         modifier = Modifier
@@ -1194,11 +1144,7 @@ fun ReorderableDockAppItem(
     val animatedOffsetX by animateFloatAsState(targetValue = visualOffsetX, label = "dock_reorder_x")
     val animatedOffsetY by animateFloatAsState(targetValue = visualOffsetY, label = "dock_reorder_y")
 
-    val themedColorFilter = if (themedIcon) {
-        ColorFilter.tint(MaterialTheme.colorScheme.primary)
-    } else {
-        null
-    }
+    val themedColorFilter: ColorFilter? = null
 
     Box(
         modifier = Modifier
