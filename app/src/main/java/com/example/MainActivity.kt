@@ -585,15 +585,20 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                     }
 
                     if (isReorderingMode && dockApps.size < settings.dockCount) {
+                        val isDarkTheme = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
+                        val plusButtonBg = if (isDarkTheme) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.10f)
+                        val plusButtonBorder = if (isDarkTheme) Color.White.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.20f)
+                        val plusIconColor = if (isDarkTheme) Color.White else Color(0xFF1E2125)
+
                         Box(
                             modifier = Modifier
                                 .size((settings.iconSizeDp - 6).dp)
                                 .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                                 .clip(RoundedCornerShape(18.dp))
-                                .background(Color.White.copy(alpha = 0.22f))
+                                .background(plusButtonBg)
                                 .border(
                                     width = 1.dp,
-                                    color = Color.White.copy(alpha = 0.45f),
+                                    color = plusButtonBorder,
                                     shape = RoundedCornerShape(18.dp)
                                 )
                                 .semantics {
@@ -610,7 +615,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "Ajouter au dock",
-                                tint = Color.White,
+                                tint = plusIconColor,
                                 modifier = Modifier.size(24.dp)
                             )
                         }

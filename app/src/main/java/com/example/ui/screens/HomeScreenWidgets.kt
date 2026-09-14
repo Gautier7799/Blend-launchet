@@ -19,6 +19,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -208,6 +209,16 @@ fun MusicPlayerCard(
         } catch (_: Exception) {}
     }
 
+    val isDark = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
+    val mediaCardBg = if (isDark) Color(0xFF232731).copy(alpha = 0.90f) else Color(0xFFF9FAF7)
+    val mediaCardText = if (isDark) Color.White else Color(0xFF1E211E)
+    val mediaIconBg = if (isDark) Color(0xFF323846) else Color(0xFFE2E6DF)
+    val mediaIconTint = if (isDark) Color.White else Color(0xFF2E332D)
+    val playPillBg = if (isDark) Color(0xFF4C6B50) else Color(0xFFD4E8D0)
+    val playPillTint = if (isDark) Color.White else Color(0xFF1E211E)
+    val nextPillBg = if (isDark) Color(0xFF323846) else Color(0xFFE2E6DF)
+    val nextPillTint = if (isDark) Color.White else Color(0xFF1E211E)
+
     Surface(
         onClick = {
             if (settings.hapticFeedback) {
@@ -226,7 +237,7 @@ fun MusicPlayerCard(
             }
         },
         shape = RoundedCornerShape(28.dp),
-        color = Color(0xFFF9FAF7),
+        color = mediaCardBg,
         shadowElevation = 0.dp,
         modifier = modifier
             .fillMaxWidth()
@@ -247,13 +258,13 @@ fun MusicPlayerCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFE2E6DF)),
+                    .background(mediaIconBg),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.MusicNote,
                     contentDescription = "Musique",
-                    tint = Color(0xFF2E332D),
+                    tint = mediaIconTint,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -264,7 +275,7 @@ fun MusicPlayerCard(
                 text = if (isPlaying) "Pixel Music • En lecture" else "Pixel Music",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF1E211E),
+                color = mediaCardText,
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -280,7 +291,7 @@ fun MusicPlayerCard(
                     isPlaying = !isPlaying
                 },
                 shape = RoundedCornerShape(14.dp),
-                color = Color(0xFFD4E8D0),
+                color = playPillBg,
                 modifier = Modifier
                     .size(48.dp)
                     .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
@@ -289,7 +300,7 @@ fun MusicPlayerCard(
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = if (isPlaying) "Mettre en pause" else "Lire la musique",
-                        tint = Color(0xFF1E211E),
+                        tint = playPillTint,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -306,7 +317,7 @@ fun MusicPlayerCard(
                     sendMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT)
                 },
                 shape = RoundedCornerShape(14.dp),
-                color = Color(0xFFE2E6DF),
+                color = nextPillBg,
                 modifier = Modifier
                     .size(48.dp)
                     .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
@@ -315,7 +326,7 @@ fun MusicPlayerCard(
                     Icon(
                         imageVector = Icons.Default.SkipNext,
                         contentDescription = "Piste suivante",
-                        tint = Color(0xFF1E211E),
+                        tint = nextPillTint,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -340,8 +351,11 @@ fun TasksCard(
     var showAddDialog by remember { mutableStateOf(false) }
     var newTaskText by remember { mutableStateOf("") }
 
-    val cardColor = Color(0xFFE5F1E2)
-    val onCardColor = Color(0xFF1B2E1D)
+    val isDark = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
+    val cardColor = if (isDark) Color(0xFF1E2A20) else Color(0xFFE5F1E2)
+    val onCardColor = if (isDark) Color(0xFFE2EEDF) else Color(0xFF1B2E1D)
+    val taskCheckTint = if (isDark) Color(0xFF81C995) else Color(0xFF385239)
+    val inputFieldBg = if (isDark) Color(0xFF28362B) else Color.White
 
     Surface(
         shape = RoundedCornerShape(26.dp),
@@ -410,9 +424,11 @@ fun TasksCard(
                         singleLine = true,
                         shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            focusedBorderColor = Color(0xFF385239),
+                            focusedContainerColor = inputFieldBg,
+                            unfocusedContainerColor = inputFieldBg,
+                            focusedTextColor = onCardColor,
+                            unfocusedTextColor = onCardColor,
+                            focusedBorderColor = taskCheckTint,
                             unfocusedBorderColor = Color.Transparent
                         ),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -440,7 +456,7 @@ fun TasksCard(
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = "Valider l'ajout de la tâche",
-                            tint = Color(0xFF385239)
+                            tint = taskCheckTint
                         )
                     }
                 }
@@ -489,7 +505,7 @@ fun TasksCard(
                             Icon(
                                 imageVector = if (task.isDone) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                                 contentDescription = if (task.isDone) "Tâche terminée" else "Tâche non terminée",
-                                tint = if (task.isDone) Color(0xFF385239) else onCardColor.copy(alpha = 0.6f),
+                                tint = if (task.isDone) taskCheckTint else onCardColor.copy(alpha = 0.6f),
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
@@ -557,9 +573,18 @@ fun AppShortcutsCard(
         }
     }
 
+    val isDark = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
+    val shortcutsCardBg = if (isDark) Color(0xFF232731).copy(alpha = 0.90f) else Color(0xFFF9FAF7)
+    val shortcutsCardText = if (isDark) Color.White else Color(0xFF1E211E)
+    val seeAllColor = if (isDark) Color(0xFF90B38C) else Color(0xFF385239)
+    val iconBoxBg = if (isDark) Color(0xFF323846) else Color.White
+    val iconBoxBorder = if (isDark) Color.White.copy(alpha = 0.12f) else Color(0xFFE2E6DF)
+    val headerIconBg = if (isDark) Color(0xFF4C6B50) else Color(0xFFD4E8D0)
+    val headerIconTint = if (isDark) Color.White else Color(0xFF1E211E)
+
     Surface(
         shape = RoundedCornerShape(26.dp),
-        color = Color(0xFFF9FAF7),
+        color = shortcutsCardBg,
         shadowElevation = 0.dp,
         modifier = modifier.fillMaxWidth()
     ) {
@@ -581,13 +606,13 @@ fun AppShortcutsCard(
                         modifier = Modifier
                             .size(28.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFD4E8D0)),
+                            .background(headerIconBg),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Apps,
                             contentDescription = null,
-                            tint = Color(0xFF1E211E),
+                            tint = headerIconTint,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -595,7 +620,7 @@ fun AppShortcutsCard(
                         text = "Raccourcis d'applications",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1E211E)
+                        color = shortcutsCardText
                     )
                 }
 
@@ -607,7 +632,7 @@ fun AppShortcutsCard(
                         text = "Voir tout",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF385239)
+                        color = seeAllColor
                     )
                 }
             }
@@ -646,10 +671,10 @@ fun AppShortcutsCard(
                             modifier = Modifier
                                 .size(46.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(Color.White)
+                                .background(iconBoxBg)
                                 .border(
                                     width = 1.dp,
-                                    color = Color(0xFFE2E6DF),
+                                    color = iconBoxBorder,
                                     shape = RoundedCornerShape(14.dp)
                                 ),
                             contentAlignment = Alignment.Center
@@ -675,7 +700,7 @@ fun AppShortcutsCard(
                             text = app.label,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color(0xFF1E211E),
+                            color = shortcutsCardText,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.widthIn(max = 52.dp)
