@@ -54,58 +54,11 @@ fun MinusOneScreen(
             .padding(horizontal = 16.dp),
         contentPadding = PaddingValues(
             top = if (settings.fullscreenMode) 24.dp else 52.dp,
-            bottom = 180.dp // Ample clearance to guarantee no dock overlap in any operation
+            bottom = 220.dp // Ample clearance to guarantee no dock overlap in any operation
         ),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. Google Web Search Bar
-        item(key = "google_search_bar") {
-            val isDark = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
-            val searchTrayColor = if (isDark) Color(0xFF232731).copy(alpha = 0.85f) else Color(0xFFE8ECF2).copy(alpha = 0.95f)
-            val searchTrayBorder = if (isDark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.08f)
-            val searchTrayContent = if (isDark) Color.White else Color(0xFF1E2125)
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "Rechercher sur Google"
-                    }
-                    .clickable { 
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://google.com")).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            }
-                            context.startActivity(intent)
-                        } catch (_: Exception) {}
-                    },
-                shape = RoundedCornerShape(28.dp),
-                color = searchTrayColor,
-                border = BorderStroke(1.dp, searchTrayBorder),
-                shadowElevation = 2.dp
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = searchTrayContent.copy(alpha = 0.70f),
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Rechercher sur le Web & Google...",
-                        color = searchTrayContent.copy(alpha = 0.60f),
-                        fontSize = 14.sp
-                    )
-                }
-            }
-        }
-
-        // 2. Compact Top Widgets Bar (Date, Weather, Clock, Battery)
+        // 1. Top Widgets Bar (Date, Weather, Clock, Battery)
         if (settings.showWeatherWidget || settings.showDateWidget || settings.showClockWidget || settings.showBatteryWidget) {
             item(key = "top_widgets_bar") {
                 TopWidgetsBar(
@@ -160,126 +113,6 @@ fun MinusOneScreen(
             }
         }
 
-        // 4. Google News Section Header
-        item(key = "news_header") {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp, bottom = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Google Actualités",
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-                    modifier = Modifier.clickable {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://news.google.com")).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            }
-                            context.startActivity(intent)
-                        } catch (_: Exception) {}
-                    }
-                ) {
-                    Text(
-                        text = "Voir tout",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
-                }
-            }
-        }
-
-        // 5. Google News Feed Items
-        items(5, key = { "news_item_$it" }) { index ->
-            NewsCard(index = index)
-        }
     }
 }
 
-@Composable
-fun NewsCard(index: Int) {
-    val context = LocalContext.current
-    val titles = listOf(
-        "Découvrez les dernières nouveautés d'Android 15 pour votre téléphone",
-        "L'Intelligence Artificielle transforme notre façon d'interagir avec les applications",
-        "Les 10 astuces indispensables pour optimiser la batterie de votre smartphone",
-        "Nouveaux modèles de téléphones : ce qu'il faut attendre cette année",
-        "Comment la réalité augmentée s'intègre dans la vie quotidienne"
-    )
-    val sources = listOf("TechRadar", "Le Monde Tech", "FrAndroid", "01net", "Numerama")
-    
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { 
-                try {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://news.google.com")).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(intent)
-                } catch (_: Exception) {}
-            },
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Article,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = titles.getOrElse(index) { "Actualité..." },
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${sources.getOrElse(index) { "Google News" }} • Il y a 2h",
-                    color = Color.White.copy(alpha = 0.65f),
-                    fontSize = 11.sp
-                )
-            }
-        }
-    }
-}

@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.viewmodels.LauncherSettings
@@ -120,7 +121,66 @@ fun TopWidgetsBar(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Keep the row empty to push the Settings gear to the end
+            // Google Search Widget
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .clickable { 
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://google.com")).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    },
+                shape = RoundedCornerShape(18.dp),
+                color = Color.White.copy(alpha = 0.20f),
+                shadowElevation = 0.dp,
+                tonalElevation = 0.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Rechercher...",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            if (settings.showClockWidget && currentTimeString.isNotEmpty()) {
+                WidgetPillItem(
+                    icon = Icons.Default.Schedule,
+                    label = currentTimeString,
+                    onClick = {}
+                )
+            }
+            if (settings.showBatteryWidget) {
+                WidgetPillItem(
+                    icon = if (isCharging) Icons.Default.Bolt else Icons.Default.BatteryFull,
+                    label = "$batteryPercent%",
+                    onClick = {
+                        try {
+                            val intent = Intent(Intent.ACTION_POWER_USAGE_SUMMARY).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    }
+                )
+            }
         }
 
         // --- Settings Shortcut Widget ---
