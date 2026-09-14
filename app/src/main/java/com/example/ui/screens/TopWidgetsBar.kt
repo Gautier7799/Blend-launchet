@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +28,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -117,21 +122,36 @@ fun TopWidgetsBar(
 
         // --- Settings Shortcut Widget ---
         if (settings.showSettingsWidget) {
-            Surface(
-                onClick = onSettingsClick,
-                shape = CircleShape,
-                color = Color.White.copy(alpha = 0.20f),
-                shadowElevation = 0.dp,
-                tonalElevation = 0.dp,
-                modifier = Modifier.size(28.dp) // Shrunk from 38.dp
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Ouvrir les paramètres du lanceur"
+                    }
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = "Ouvrir les paramètres",
+                        onClick = onSettingsClick
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Paramètres",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp) // Shrunk from 20.dp
-                    )
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.20f),
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Paramètres",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }

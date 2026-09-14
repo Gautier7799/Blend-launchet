@@ -33,6 +33,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +44,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -415,7 +420,17 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                         Column(
                             modifier = Modifier
                                 .padding(6.dp)
-                                .clickable { isAddAppsOpen = true },
+                                .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .semantics(mergeDescendants = true) {
+                                    role = Role.Button
+                                    contentDescription = "Ajouter des applications à l'écran d'accueil"
+                                }
+                                .clickable(
+                                    role = Role.Button,
+                                    onClickLabel = "Ajouter des applications",
+                                    onClick = { isAddAppsOpen = true }
+                                ),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Box(
@@ -432,7 +447,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Add,
-                                    contentDescription = "Ajouter",
+                                    contentDescription = "Ajouter à l'écran d'accueil",
                                     tint = Color.White,
                                     modifier = Modifier.size(28.dp)
                                 )
@@ -468,17 +483,33 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
         if (!isDrawerOpen) {
             var dockDragAmount by remember { mutableFloatStateOf(0f) }
 
-            // Gesture handle pill above dock indicating swipe up
+            // Gesture handle pill above dock indicating swipe up with 48dp minimum touch target
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = if (isReorderingMode) 138.dp else 124.dp)
-                    .width(42.dp)
-                    .height(4.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.55f))
-                    .clickable { isDrawerOpen = true }
-            )
+                    .padding(bottom = if (isReorderingMode) 116.dp else 102.dp)
+                    .width(64.dp)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Ouvrir le tiroir d'applications"
+                    }
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = "Ouvrir le tiroir d'applications",
+                        onClick = { isDrawerOpen = true }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(42.dp)
+                        .height(4.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.65f))
+                )
+            }
 
             Box(
                 modifier = Modifier
@@ -590,6 +621,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                         Box(
                             modifier = Modifier
                                 .size((settings.iconSizeDp - 6).dp)
+                                .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                                 .clip(RoundedCornerShape(18.dp))
                                 .background(Color.White.copy(alpha = 0.22f))
                                 .border(
@@ -597,12 +629,20 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                                     color = Color.White.copy(alpha = 0.45f),
                                     shape = RoundedCornerShape(18.dp)
                                 )
-                                .clickable { isAddAppsOpen = true },
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = "Ajouter une application au dock"
+                                }
+                                .clickable(
+                                    role = Role.Button,
+                                    onClickLabel = "Ajouter au dock",
+                                    onClick = { isAddAppsOpen = true }
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
-                                contentDescription = "Ajouter au Dock",
+                                contentDescription = "Ajouter au dock",
                                 tint = Color.White,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -756,17 +796,23 @@ fun AppDrawer(
                     }
 
                     Row {
-                        IconButton(onClick = onSettingsClick) {
+                        IconButton(
+                            onClick = onSettingsClick,
+                            modifier = Modifier.minimumInteractiveComponentSize()
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
-                                contentDescription = "Paramètres",
+                                contentDescription = "Ouvrir les paramètres du lanceur",
                                 tint = Color.White
                             )
                         }
-                        IconButton(onClick = onClose) {
+                        IconButton(
+                            onClick = onClose,
+                            modifier = Modifier.minimumInteractiveComponentSize()
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Fermer",
+                                contentDescription = "Fermer le tiroir d'applications",
                                 tint = Color.White
                             )
                         }
@@ -790,10 +836,13 @@ fun AppDrawer(
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
+                        IconButton(
+                            onClick = { searchQuery = "" },
+                            modifier = Modifier.minimumInteractiveComponentSize()
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Effacer",
+                                contentDescription = "Effacer la recherche",
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
@@ -874,9 +923,16 @@ fun AppIconItem(
         modifier = Modifier
             .padding(6.dp)
             .scale(scale)
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                contentDescription = app.label
+            }
             .combinedClickable(
                 interactionSource = interactionSource,
-                indication = null,
+                indication = ripple(bounded = false, radius = (iconSize / 2) + 8.dp),
+                role = Role.Button,
+                onClickLabel = "Ouvrir ${app.label}",
+                onLongClickLabel = if (onLongClick != null) "Options de ${app.label}" else null,
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
@@ -1010,12 +1066,20 @@ fun ReorderableHomeAppItem(
                         )
                     }
                 } else {
-                    Modifier.combinedClickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                        onClick = onClick,
-                        onLongClick = onLongClick
-                    )
+                    Modifier
+                        .semantics(mergeDescendants = true) {
+                            role = Role.Button
+                            contentDescription = app.label
+                        }
+                        .combinedClickable(
+                            indication = ripple(bounded = false, radius = (iconSize / 2) + 8.dp),
+                            interactionSource = remember { MutableInteractionSource() },
+                            role = Role.Button,
+                            onClickLabel = "Ouvrir ${app.label}",
+                            onLongClickLabel = "Réorganiser l'écran d'accueil",
+                            onClick = onClick,
+                            onLongClick = onLongClick
+                        )
                 }
             ),
         contentAlignment = Alignment.TopCenter
@@ -1069,24 +1133,38 @@ fun ReorderableHomeAppItem(
             }
         }
 
-        // In Reorder Mode: Top-Right Remove Badge (-)
+        // In Reorder Mode: Top-Right Remove Badge (-) with 48dp touch target
         if (isReordering) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = 6.dp, y = (-4).dp)
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFE53935))
-                    .clickable { onRemove() },
+                    .offset(x = 8.dp, y = (-6).dp)
+                    .size(48.dp)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Supprimer ${app.label} de l'écran d'accueil"
+                    }
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = "Supprimer de l'écran d'accueil",
+                        onClick = onRemove
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Supprimer",
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFE53935)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Supprimer ${app.label}",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
         }
     }
@@ -1168,12 +1246,20 @@ fun ReorderableDockAppItem(
                         )
                     }
                 } else {
-                    Modifier.combinedClickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                        onClick = onClick,
-                        onLongClick = onLongClick
-                    )
+                    Modifier
+                        .semantics(mergeDescendants = true) {
+                            role = Role.Button
+                            contentDescription = "${app.label}, dock"
+                        }
+                        .combinedClickable(
+                            indication = ripple(bounded = false, radius = (iconSize / 2) + 8.dp),
+                            interactionSource = remember { MutableInteractionSource() },
+                            role = Role.Button,
+                            onClickLabel = "Ouvrir ${app.label}",
+                            onLongClickLabel = "Réorganiser le dock",
+                            onClick = onClick,
+                            onLongClick = onLongClick
+                        )
                 }
             ),
         contentAlignment = Alignment.TopCenter
@@ -1213,26 +1299,30 @@ fun ReorderableDockAppItem(
                     if (index > 0) {
                         IconButton(
                             onClick = onMoveLeft,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier
+                                .size(32.dp)
+                                .minimumInteractiveComponentSize()
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Déplacer à gauche",
+                                contentDescription = "Déplacer ${app.label} à gauche",
                                 tint = Color.White,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
                     if (index < totalCount - 1) {
                         IconButton(
                             onClick = onMoveRight,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier
+                                .size(32.dp)
+                                .minimumInteractiveComponentSize()
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = "Déplacer à droite",
+                                contentDescription = "Déplacer ${app.label} à droite",
                                 tint = Color.White,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
@@ -1240,24 +1330,38 @@ fun ReorderableDockAppItem(
             }
         }
 
-        // In Reorder Mode: Top-Right Remove Badge (-)
+        // In Reorder Mode: Top-Right Remove Badge (-) with 48dp minimum touch target
         if (isReordering) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = 4.dp, y = (-4).dp)
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFE53935))
-                    .clickable { onRemove() },
+                    .offset(x = 6.dp, y = (-6).dp)
+                    .size(48.dp)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Retirer ${app.label} du dock"
+                    }
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = "Retirer du dock",
+                        onClick = onRemove
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Supprimer du dock",
-                    tint = Color.White,
-                    modifier = Modifier.size(12.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFE53935)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Retirer ${app.label} du dock",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
         }
     }

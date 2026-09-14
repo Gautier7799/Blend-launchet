@@ -1,6 +1,6 @@
 {
-  "name": "DocCloud Manager",
-  "description": "Cloud-based document library with AI text tools, notes, and document sharing.",
+  "name": "Blend Launcher",
+  "description": "Minimalist, modern Material You Android home launcher with smart widgets, dock, and app drawer.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

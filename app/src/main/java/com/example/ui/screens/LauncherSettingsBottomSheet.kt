@@ -21,6 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,10 +97,13 @@ fun LauncherSettingsBottomSheet(
                     }
                 }
 
-                IconButton(onClick = onDismissRequest) {
+                IconButton(
+                    onClick = onDismissRequest,
+                    modifier = Modifier.minimumInteractiveComponentSize()
+                ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Fermer",
+                        contentDescription = "Fermer les paramètres du lanceur",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -656,21 +663,31 @@ fun LauncherSettingsBottomSheet(
                         leadingContent = {
                             Icon(
                                 imageVector = Icons.Default.Home,
-                                contentDescription = null,
+                                contentDescription = "Icône accueil",
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         },
                         trailingContent = {
                             Icon(
                                 imageVector = Icons.Default.ArrowForward,
-                                contentDescription = null,
+                                contentDescription = "Ouvrir",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
                         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
                         modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .clickable { viewModel.openDefaultLauncherSettings(context) }
+                            .semantics(mergeDescendants = true) {
+                                role = Role.Button
+                                contentDescription = "Définir comme écran d'accueil par défaut"
+                            }
+                            .clickable(
+                                role = Role.Button,
+                                onClickLabel = "Ouvrir les paramètres du lanceur par défaut",
+                                onClick = { viewModel.openDefaultLauncherSettings(context) }
+                            )
                     )
 
                     HorizontalDivider(
@@ -692,14 +709,24 @@ fun LauncherSettingsBottomSheet(
                         leadingContent = {
                             Icon(
                                 imageVector = Icons.Default.Refresh,
-                                contentDescription = null,
+                                contentDescription = "Icône actualiser",
                                 tint = MaterialTheme.colorScheme.secondary
                             )
                         },
                         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
                         modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .clickable { viewModel.loadApps() }
+                            .semantics(mergeDescendants = true) {
+                                role = Role.Button
+                                contentDescription = "Actualiser les applications"
+                            }
+                            .clickable(
+                                role = Role.Button,
+                                onClickLabel = "Actualiser la liste des applications",
+                                onClick = { viewModel.loadApps() }
+                            )
                     )
                 }
             }
@@ -729,12 +756,22 @@ private fun SettingsSwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) },
+            .defaultMinSize(minHeight = 48.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .semantics(mergeDescendants = true) {
+                role = Role.Switch
+            }
+            .clickable(
+                role = Role.Switch,
+                onClickLabel = if (checked) "Désactiver $title" else "Activer $title",
+                onClick = { onCheckedChange(!checked) }
+            )
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = title,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(24.dp)
         )

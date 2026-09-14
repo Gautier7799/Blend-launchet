@@ -36,6 +36,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
@@ -109,6 +113,10 @@ fun DeviceBatteryCard(
         modifier = modifier
             .fillMaxWidth()
             .height(115.dp)
+            .semantics {
+                role = Role.Button
+                contentDescription = "Carte batterie : $deviceName, $batteryPercent% ${if (isCharging) ", en charge" else ""}"
+            }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Visual battery fill indicator
@@ -133,7 +141,7 @@ fun DeviceBatteryCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Smartphone,
-                        contentDescription = null,
+                        contentDescription = "Téléphone $deviceName",
                         tint = onCardColor,
                         modifier = Modifier.size(24.dp)
                     )
@@ -155,16 +163,16 @@ fun DeviceBatteryCard(
 
                 Box(
                     modifier = Modifier
-                        .size(26.dp) // Shrunk from 34.dp
+                        .size(26.dp)
                         .clip(CircleShape)
                         .background(darkCircleColor),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = if (isCharging) Icons.Default.Bolt else Icons.Default.BatteryChargingFull,
-                        contentDescription = "Charge",
+                        contentDescription = if (isCharging) "Batterie en charge" else "Batterie à $batteryPercent%",
                         tint = Color(0xFFD3E8D0),
-                        modifier = Modifier.size(14.dp) // Shrunk from 19.dp
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
@@ -207,6 +215,10 @@ fun MusicPlayerCard(
         modifier = modifier
             .fillMaxWidth()
             .height(68.dp)
+            .semantics {
+                role = Role.Button
+                contentDescription = "Lecteur de musique Pixel Music"
+            }
     ) {
         Row(
             modifier = Modifier
@@ -224,7 +236,7 @@ fun MusicPlayerCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.MusicNote,
-                    contentDescription = null,
+                    contentDescription = "Musique",
                     tint = Color(0xFF2E332D),
                     modifier = Modifier.size(24.dp)
                 )
@@ -252,12 +264,14 @@ fun MusicPlayerCard(
                 },
                 shape = RoundedCornerShape(14.dp),
                 color = Color(0xFFD4E8D0),
-                modifier = Modifier.size(44.dp)
+                modifier = Modifier
+                    .size(48.dp)
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = "Lecture",
+                        contentDescription = if (isPlaying) "Mettre en pause" else "Lire la musique",
                         tint = Color(0xFF1E211E),
                         modifier = Modifier.size(24.dp)
                     )
@@ -275,12 +289,14 @@ fun MusicPlayerCard(
                 },
                 shape = RoundedCornerShape(14.dp),
                 color = Color(0xFFE2E6DF),
-                modifier = Modifier.size(44.dp)
+                modifier = Modifier
+                    .size(48.dp)
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.SkipNext,
-                        contentDescription = "Suivant",
+                        contentDescription = "Piste suivante",
                         tint = Color(0xFF1E211E),
                         modifier = Modifier.size(24.dp)
                     )
@@ -324,7 +340,18 @@ fun TasksCard(
         ) {
             // Header Row: "Mes tâches"
             Row(
-                modifier = Modifier.fillMaxWidth().clickable { showAddDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Mes tâches, appuyer pour ajouter une tâche"
+                    }
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = "Ajouter une tâche",
+                        onClick = { showAddDialog = true }
+                    ),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -340,13 +367,11 @@ fun TasksCard(
                     )
                     Icon(
                         imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = null,
+                        contentDescription = "Ouvrir l'ajout de tâche",
                         tint = onCardColor,
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                
-                // Removed the green '+' button as per request, tapping the header now opens the add dialog.
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -391,11 +416,12 @@ fun TasksCard(
                                 newTaskText = ""
                                 showAddDialog = false
                             }
-                        }
+                        },
+                        modifier = Modifier.minimumInteractiveComponentSize()
                     ) {
                         Icon(
                             imageVector = Icons.Default.Check,
-                            contentDescription = "Valider",
+                            contentDescription = "Valider l'ajout de la tâche",
                             tint = Color(0xFF385239)
                         )
                     }
@@ -423,19 +449,28 @@ fun TasksCard(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .defaultMinSize(minHeight = 48.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .clickable {
-                                    if (settings.hapticFeedback) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    }
-                                    onToggleTask(task.id)
+                                .semantics(mergeDescendants = true) {
+                                    role = Role.Checkbox
+                                    contentDescription = "${task.text}, ${if (task.isDone) "terminée" else "non terminée"}"
                                 }
+                                .clickable(
+                                    role = Role.Checkbox,
+                                    onClickLabel = if (task.isDone) "Marquer non terminée" else "Marquer comme terminée",
+                                    onClick = {
+                                        if (settings.hapticFeedback) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        }
+                                        onToggleTask(task.id)
+                                    }
+                                )
                                 .padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = if (task.isDone) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                                contentDescription = null,
+                                contentDescription = if (task.isDone) "Tâche terminée" else "Tâche non terminée",
                                 tint = if (task.isDone) Color(0xFF385239) else onCardColor.copy(alpha = 0.6f),
                                 modifier = Modifier.size(20.dp)
                             )
@@ -455,11 +490,13 @@ fun TasksCard(
                                     }
                                     onDeleteTask(task.id)
                                 },
-                                modifier = Modifier.size(26.dp)
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .minimumInteractiveComponentSize()
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "Supprimer",
+                                    contentDescription = "Supprimer la tâche : ${task.text}",
                                     tint = onCardColor.copy(alpha = 0.4f),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -568,13 +605,22 @@ fun AppShortcutsCard(
                 shortcutApps.forEach { app ->
                     Column(
                         modifier = Modifier
+                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .clickable {
-                                if (settings.hapticFeedback) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                }
-                                onAppClick(app.packageName)
+                            .semantics(mergeDescendants = true) {
+                                role = Role.Button
+                                contentDescription = "Raccourci ${app.label}"
                             }
+                            .clickable(
+                                role = Role.Button,
+                                onClickLabel = "Ouvrir ${app.label}",
+                                onClick = {
+                                    if (settings.hapticFeedback) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                    onAppClick(app.packageName)
+                                }
+                            )
                             .padding(4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -660,7 +706,7 @@ fun ManageHomeWidgetsBottomSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Widgets,
-                        contentDescription = null,
+                        contentDescription = "Icône gestion des widgets",
                         tint = Color(0xFF1E211E),
                         modifier = Modifier.size(22.dp)
                     )
@@ -727,7 +773,19 @@ private fun WidgetToggleRow(
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .semantics(mergeDescendants = true) {
+                role = Role.Switch
+            }
+            .clickable(
+                role = Role.Switch,
+                onClickLabel = if (checked) "Désactiver $title" else "Activer $title",
+                onClick = { onCheckedChange(!checked) }
+            )
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

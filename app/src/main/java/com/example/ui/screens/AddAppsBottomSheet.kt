@@ -18,6 +18,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -86,10 +90,13 @@ fun AddAppsBottomSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = onDismissRequest) {
+                IconButton(
+                    onClick = onDismissRequest,
+                    modifier = Modifier.minimumInteractiveComponentSize()
+                ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Fermer",
+                        contentDescription = "Fermer la sélection d'applications",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -107,7 +114,7 @@ fun AddAppsBottomSheet(
                     onClick = { selectedTarget = AddAppsTarget.HOME },
                     label = { Text("Écran d'accueil (${homeAppPackages.size})") },
                     leadingIcon = if (selectedTarget == AddAppsTarget.HOME) {
-                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        { Icon(Icons.Default.Check, contentDescription = "Actif", modifier = Modifier.size(16.dp)) }
                     } else null,
                     modifier = Modifier.weight(1f)
                 )
@@ -116,7 +123,7 @@ fun AddAppsBottomSheet(
                     onClick = { selectedTarget = AddAppsTarget.DOCK },
                     label = { Text("Dock (${dockAppPackages.size})") },
                     leadingIcon = if (selectedTarget == AddAppsTarget.DOCK) {
-                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        { Icon(Icons.Default.Check, contentDescription = "Actif", modifier = Modifier.size(16.dp)) }
                     } else null,
                     modifier = Modifier.weight(1f)
                 )
@@ -130,9 +137,23 @@ fun AddAppsBottomSheet(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = null,
+                        contentDescription = "Rechercher",
                         tint = MaterialTheme.colorScheme.primary
                     )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = { searchQuery = "" },
+                            modifier = Modifier.minimumInteractiveComponentSize()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Effacer la recherche",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(18.dp),
@@ -158,20 +179,31 @@ fun AddAppsBottomSheet(
                     } else {
                         dockAppPackages.contains(app.packageName)
                     }
+                    val targetName = if (selectedTarget == AddAppsTarget.HOME) "l'écran d'accueil" else "le dock"
+                    val actionLabel = if (isAdded) "Retirer de $targetName" else "Ajouter à $targetName"
 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .clickable {
-                                if (selectedTarget == AddAppsTarget.HOME) {
-                                    if (isAdded) viewModel.removeAppFromHome(app.packageName)
-                                    else viewModel.addAppToHome(app.packageName)
-                                } else {
-                                    if (isAdded) viewModel.removeAppFromDock(app.packageName)
-                                    else viewModel.addAppToDock(app.packageName)
-                                }
+                            .semantics(mergeDescendants = true) {
+                                role = Role.Checkbox
+                                contentDescription = "${app.label}, ${if (isAdded) "ajouté à $targetName" else "non ajouté"}"
                             }
+                            .clickable(
+                                role = Role.Checkbox,
+                                onClickLabel = actionLabel,
+                                onClick = {
+                                    if (selectedTarget == AddAppsTarget.HOME) {
+                                        if (isAdded) viewModel.removeAppFromHome(app.packageName)
+                                        else viewModel.addAppToHome(app.packageName)
+                                    } else {
+                                        if (isAdded) viewModel.removeAppFromDock(app.packageName)
+                                        else viewModel.addAppToDock(app.packageName)
+                                    }
+                                }
+                            )
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -218,11 +250,13 @@ fun AddAppsBottomSheet(
                                 containerColor = if (isAdded) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
                                 contentColor = if (isAdded) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                             ),
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier
+                                .size(36.dp)
+                                .minimumInteractiveComponentSize()
                         ) {
                             Icon(
                                 imageVector = if (isAdded) Icons.Default.Check else Icons.Default.Add,
-                                contentDescription = if (isAdded) "Ajouté" else "Ajouter",
+                                contentDescription = actionLabel,
                                 modifier = Modifier.size(20.dp)
                             )
                         }

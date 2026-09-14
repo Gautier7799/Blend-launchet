@@ -18,6 +18,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -157,7 +161,7 @@ fun AppActionBottomSheet(
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = null,
+                                    contentDescription = "Déplacer ${app.label} vers la gauche dans le dock",
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -178,7 +182,7 @@ fun AppActionBottomSheet(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
+                                    contentDescription = "Déplacer ${app.label} vers la droite dans le dock",
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -234,7 +238,7 @@ fun AppActionBottomSheet(
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = null,
+                                    contentDescription = "Déplacer ${app.label} vers la gauche",
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -255,7 +259,7 @@ fun AppActionBottomSheet(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
+                                    contentDescription = "Déplacer ${app.label} vers la droite",
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -311,7 +315,13 @@ private fun ActionItemRow(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         color = Color.Transparent,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                contentDescription = title
+            }
     ) {
         Row(
             modifier = Modifier
@@ -328,7 +338,7 @@ private fun ActionItemRow(
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = null,
+                    contentDescription = title,
                     tint = tint,
                     modifier = Modifier.size(22.dp)
                 )
