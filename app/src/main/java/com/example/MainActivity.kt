@@ -281,7 +281,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                     onSettingsClick = { isSettingsOpen = true },
                     onReorderWidget = { from, to -> viewModel.reorderWidgets(from, to) },
                     onDeleteWidget = { widgetKey -> viewModel.deleteWidget(widgetKey) },
-                    onOpenManageWidgets = { isManageWidgetsOpen = true }
+                    onOpenManageWidgets = { isManageWidgetsOpen = true },
+                    onResetWidgets = { viewModel.resetWidgetsToDefault() }
                 )
             } else {
                 // Main Home Screen Content

@@ -59,6 +59,7 @@ fun MinusOneScreen(
     onReorderWidget: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
     onDeleteWidget: (widgetKey: String) -> Unit = {},
     onOpenManageWidgets: () -> Unit = {},
+    onResetWidgets: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -183,32 +184,21 @@ fun MinusOneScreen(
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         contentPadding = PaddingValues(
-            top = if (settings.fullscreenMode) 20.dp else 48.dp,
-            bottom = 48.dp // Dock is hidden on widget screen to maximize space
+            top = if (settings.fullscreenMode) 24.dp else 52.dp,
+            bottom = 48.dp
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Top Widgets Bar (Search, Battery pill, Clock, Settings)
-        if (settings.showWeatherWidget || settings.showDateWidget || settings.showClockWidget || settings.showBatteryWidget) {
-            item(key = "top_widgets_bar") {
-                TopWidgetsBar(
-                    settings = settings,
-                    onAiClick = onAiClick,
-                    onSettingsClick = onSettingsClick
-                )
-            }
-        }
-
-        // 2. iOS 27 Widgets Dashboard Header with Mode Indicators
+        // 1. iOS 27 Widgets Dashboard Header with Restore, Add & Edit Controls (Search bar removed)
         item(key = "widgets_dashboard_header") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -244,6 +234,8 @@ fun MinusOneScreen(
                     )
                 }
 
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -272,7 +264,27 @@ fun MinusOneScreen(
                             Text(text = "Terminé", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     } else {
-                        // "+ Add" and "Edit" Action Pills
+                        // 1. Restore Default Widgets Icon Button (Moved to Top as requested)
+                        Surface(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onResetWidgets()
+                            },
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.18f),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.RestartAlt,
+                                    contentDescription = "Restaurer les widgets par défaut",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
+                        }
+
+                        // 2. Add / Manage Widgets Icon Button
                         Surface(
                             onClick = onOpenManageWidgets,
                             shape = CircleShape,
@@ -284,11 +296,12 @@ fun MinusOneScreen(
                                     imageVector = Icons.Default.Add,
                                     contentDescription = "Ajouter un widget",
                                     tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
 
+                        // 3. Edit / Reorder Button
                         Surface(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -322,7 +335,7 @@ fun MinusOneScreen(
             }
         }
 
-        // 3. Dynamically Ordered Reorderable & Deletable Widgets with Magnetic Snapping
+        // 2. Dynamically Ordered Reorderable & Deletable Widgets with Magnetic Snapping
         itemsIndexed(
             items = activeWidgets,
             key = { _, item -> item.key }
@@ -353,40 +366,42 @@ fun MinusOneScreen(
             }
         }
 
-        // 4. Empty State or Add Widget Action Card
-        item(key = "add_more_widgets_card") {
-            Surface(
-                onClick = onOpenManageWidgets,
-                shape = RoundedCornerShape(26.dp),
-                color = Color.White.copy(alpha = if (isDark) 0.08f else 0.18f),
-                border = BorderStroke(
-                    1.dp,
-                    Color.White.copy(alpha = if (isDark) 0.20f else 0.40f)
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            ) {
-                Row(
+        // 3. Optional Empty State if all widgets are deleted
+        if (activeWidgets.isEmpty()) {
+            item(key = "empty_widgets_notice") {
+                Surface(
+                    onClick = onResetWidgets,
+                    shape = RoundedCornerShape(26.dp),
+                    color = Color.White.copy(alpha = if (isDark) 0.08f else 0.18f),
+                    border = BorderStroke(
+                        1.dp,
+                        Color.White.copy(alpha = if (isDark) 0.20f else 0.40f)
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 18.dp, horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                        .padding(vertical = 12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.AddCircleOutline,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = if (activeWidgets.isEmpty()) "Aucun widget actif • Toucher pour en ajouter" else "Ajouter ou restaurer des widgets",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 18.dp, horizontal = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.RestartAlt,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Aucun widget • Toucher pour restaurer",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
