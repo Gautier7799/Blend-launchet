@@ -640,8 +640,8 @@ fun LauncherSettingsBottomSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Section 4: System & Actions
-            SettingsSectionTitle(title = "Système & Lanceur par défaut")
+            // Section 4: Centre des Autorisations & Stabilité du Système
+            SettingsSectionTitle(title = "Autorisations & Stabilité du Système")
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
@@ -649,28 +649,109 @@ fun LauncherSettingsBottomSheet(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
-                    // Default Home Setting Button
+                    val isDefault = remember { viewModel.isDefaultLauncher(context) }
+                    val isNotifAccess = remember { viewModel.isNotificationAccessGranted(context) }
+                    val isBatteryIgnored = remember { viewModel.isBatteryOptimizationIgnored(context) }
+                    val isAccessibility = remember { viewModel.isAccessibilityServiceEnabled() }
+                    val isNotifPolicy = remember { viewModel.isNotificationPolicyAccessGranted(context) }
+
+                    // 1. Default Launcher
+                    PermissionStatusItem(
+                        icon = Icons.Default.Home,
+                        title = "Lanceur d'accueil par défaut",
+                        subtitle = if (isDefault) "Blend Launcher est défini comme écran d'accueil" else "Définir Blend Launcher comme lanceur principal",
+                        isGranted = isDefault,
+                        statusText = if (isDefault) "Par défaut" else "Définir",
+                        onClick = { viewModel.openDefaultLauncherSettings(context) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // 2. Notification Badges & Listener
+                    PermissionStatusItem(
+                        icon = Icons.Default.NotificationsActive,
+                        title = "Accès aux Notifications & Badges",
+                        subtitle = if (isNotifAccess) "Écoute active pour pastilles sur les icônes" else "Autoriser l'affichage du nombre de notifications sur les applications",
+                        isGranted = isNotifAccess,
+                        statusText = if (isNotifAccess) "Actif" else "Activer",
+                        onClick = { viewModel.openNotificationAccessSettings(context) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // 3. Battery Optimization (Keep alive in background)
+                    PermissionStatusItem(
+                        icon = Icons.Default.BatteryChargingFull,
+                        title = "Exemption de batterie (Arrière-plan)",
+                        subtitle = if (isBatteryIgnored) "Optimisation ignorée pour une réactivité maximale" else "Empêcher le système de suspendre le lanceur pour éviter tout ralentissement",
+                        isGranted = isBatteryIgnored,
+                        statusText = if (isBatteryIgnored) "Illimité" else "Optimiser",
+                        onClick = { viewModel.requestIgnoreBatteryOptimization(context) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // 4. Accessibility Service (Double tap sleep)
+                    PermissionStatusItem(
+                        icon = Icons.Default.Lock,
+                        title = "Service d'Accessibilité (Verrouillage)",
+                        subtitle = if (isAccessibility) "Verrouillage de l'écran activé sans mot de passe" else "Permet d'éteindre l'écran par double-tap tout en gardant l'empreinte",
+                        isGranted = isAccessibility,
+                        statusText = if (isAccessibility) "Actif" else "Activer",
+                        onClick = { viewModel.performSleep(context) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // 5. Sound & DND Policy Access
+                    PermissionStatusItem(
+                        icon = Icons.Default.VolumeUp,
+                        title = "Gestion Son & Ne Pas Déranger",
+                        subtitle = if (isNotifPolicy) "Contrôle des modes sonores autorisé" else "Permet de basculer silencieux/sonnerie depuis les raccourcis",
+                        isGranted = isNotifPolicy,
+                        statusText = if (isNotifPolicy) "Autorisé" else "Configurer",
+                        onClick = { viewModel.openNotificationPolicySettings(context) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // 6. Full App Permissions
                     ListItem(
                         headlineContent = {
                             Text(
-                                text = "Définir comme écran d'accueil par défaut",
+                                text = "Toutes les autorisations système",
                                 fontWeight = FontWeight.SemiBold
                             )
                         },
                         supportingContent = {
-                            Text("Ouvrir les paramètres Android pour choisir Blend Launcher")
+                            Text("Ouvrir la page des informations de l'application dans Android")
                         },
                         leadingContent = {
                             Icon(
-                                imageVector = Icons.Default.Home,
-                                contentDescription = "Icône accueil",
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         },
                         trailingContent = {
                             Icon(
                                 imageVector = Icons.Default.ArrowForward,
-                                contentDescription = "Ouvrir",
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
@@ -679,15 +760,7 @@ fun LauncherSettingsBottomSheet(
                             .fillMaxWidth()
                             .defaultMinSize(minHeight = 48.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .semantics(mergeDescendants = true) {
-                                role = Role.Button
-                                contentDescription = "Définir comme écran d'accueil par défaut"
-                            }
-                            .clickable(
-                                role = Role.Button,
-                                onClickLabel = "Ouvrir les paramètres du lanceur par défaut",
-                                onClick = { viewModel.openDefaultLauncherSettings(context) }
-                            )
+                            .clickable { viewModel.openAppDetailsSettings(context) }
                     )
 
                     HorizontalDivider(
@@ -795,3 +868,63 @@ private fun SettingsSwitchRow(
         )
     }
 }
+
+@Composable
+private fun PermissionStatusItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    isGranted: Boolean,
+    statusText: String,
+    onClick: () -> Unit
+) {
+    ListItem(
+        headlineContent = {
+            Text(text = title, fontWeight = FontWeight.SemiBold)
+        },
+        supportingContent = {
+            Text(text = subtitle, style = MaterialTheme.typography.bodySmall)
+        },
+        leadingContent = {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = if (isGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        trailingContent = {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = if (isGranted) androidx.compose.ui.graphics.Color(0xFF34C759).copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isGranted) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = androidx.compose.ui.graphics.Color(0xFF34C759),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                    }
+                    Text(
+                        text = statusText,
+                        color = if (isGranted) androidx.compose.ui.graphics.Color(0xFF34C759) else MaterialTheme.colorScheme.primary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        },
+        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+    )
+}
+

@@ -10,6 +10,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.AppRepository
 import com.example.domain.AppItem
 import com.example.service.BlendAccessibilityService
+import com.example.service.BlendNotificationListenerService
+import com.example.util.SystemPermissionsHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -412,22 +414,43 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    val notificationCounts: StateFlow<Map<String, Int>> = BlendNotificationListenerService.notificationCounts
+
+    fun isDefaultLauncher(context: Context): Boolean = SystemPermissionsHelper.isDefaultLauncher(context)
+
     fun openDefaultLauncherSettings(context: Context) {
-        val actions = listOf(
-            Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS,
-            Settings.ACTION_HOME_SETTINGS,
-            Settings.ACTION_SETTINGS
-        )
-        for (action in actions) {
-            try {
-                val intent = Intent(action).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
-                break
-            } catch (_: Exception) {
-                // Try next fallback
-            }
-        }
+        SystemPermissionsHelper.openDefaultLauncherSettings(context)
+    }
+
+    fun isNotificationAccessGranted(context: Context): Boolean =
+        BlendNotificationListenerService.isNotificationAccessGranted(context)
+
+    fun openNotificationAccessSettings(context: Context) {
+        BlendNotificationListenerService.openNotificationAccessSettings(context)
+    }
+
+    fun isBatteryOptimizationIgnored(context: Context): Boolean =
+        SystemPermissionsHelper.isBatteryOptimizationIgnored(context)
+
+    fun requestIgnoreBatteryOptimization(context: Context) {
+        SystemPermissionsHelper.requestIgnoreBatteryOptimization(context)
+    }
+
+    fun isNotificationPolicyAccessGranted(context: Context): Boolean =
+        SystemPermissionsHelper.isNotificationPolicyAccessGranted(context)
+
+    fun openNotificationPolicySettings(context: Context) {
+        SystemPermissionsHelper.openNotificationPolicySettings(context)
+    }
+
+    fun isPostNotificationsGranted(context: Context): Boolean =
+        SystemPermissionsHelper.isPostNotificationsGranted(context)
+
+    fun openAppDetailsSettings(context: Context) {
+        SystemPermissionsHelper.openAppDetailsSettings(context)
+    }
+
+    fun expandNotificationShade(context: Context) {
+        SystemPermissionsHelper.expandNotificationShade(context)
     }
 }

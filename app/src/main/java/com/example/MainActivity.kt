@@ -156,6 +156,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     val homeAppPackages by viewModel.homeAppPackages.collectAsState()
     val dockAppPackages by viewModel.dockAppPackages.collectAsState()
     val tasks by viewModel.tasks.collectAsState()
+    val notificationCounts by viewModel.notificationCounts.collectAsState()
 
     var isDrawerOpen by remember { mutableStateOf(false) }
     var isSettingsOpen by remember { mutableStateOf(false) }
@@ -328,6 +329,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                         app = app,
                         index = index,
                         totalCount = homeApps.size,
+                        badgeCount = notificationCounts[app.packageName] ?: 0,
                         isReordering = isReorderingMode,
                         wobbleAngle = if (index % 2 == 0) wobbleAngle else -wobbleAngle,
                         showLabel = settings.showLabels,
@@ -553,6 +555,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             app = app,
                             index = index,
                             totalCount = dockApps.size,
+                            badgeCount = notificationCounts[app.packageName] ?: 0,
                             isReordering = isReorderingMode,
                             wobbleAngle = wobbleAngle,
                             iconSize = (settings.iconSizeDp - 6).dp,
@@ -657,6 +660,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             AppDrawer(
                 apps = apps,
                 settings = settings,
+                notificationCounts = notificationCounts,
                 onAppClick = { viewModel.launchApp(it) },
                 onAppLongClick = { selectedActionApp = it },
                 onClose = { isDrawerOpen = false },
@@ -732,6 +736,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
 fun AppDrawer(
     apps: List<AppItem>,
     settings: LauncherSettings,
+    notificationCounts: Map<String, Int> = emptyMap(),
     onAppClick: (String) -> Unit,
     onAppLongClick: (AppItem) -> Unit,
     onClose: () -> Unit,
@@ -905,6 +910,7 @@ fun AppDrawer(
                 ) { app ->
                     AppIconItem(
                         app = app,
+                        badgeCount = notificationCounts[app.packageName] ?: 0,
                         textColor = appItemTextColor,
                         shadow = false,
                         showLabel = settings.showLabels,
@@ -923,6 +929,7 @@ fun AppDrawer(
 @Composable
 fun AppIconItem(
     app: AppItem,
+    badgeCount: Int = 0,
     showLabel: Boolean = true,
     textColor: Color = Color.White,
     shadow: Boolean = false,
@@ -963,26 +970,45 @@ fun AppIconItem(
             ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (app.iconBitmap != null) {
-            Image(
-                bitmap = app.iconBitmap,
-                contentDescription = app.label,
-                colorFilter = themedColorFilter,
-                modifier = Modifier
-                    .size(iconSize)
-                    .clip(RoundedCornerShape(18.dp)),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            AsyncImage(
-                model = app.icon,
-                contentDescription = app.label,
-                colorFilter = themedColorFilter,
-                modifier = Modifier
-                    .size(iconSize)
-                    .clip(RoundedCornerShape(18.dp)),
-                contentScale = ContentScale.Crop
-            )
+        Box(contentAlignment = Alignment.TopEnd) {
+            if (app.iconBitmap != null) {
+                Image(
+                    bitmap = app.iconBitmap,
+                    contentDescription = app.label,
+                    colorFilter = themedColorFilter,
+                    modifier = Modifier
+                        .size(iconSize)
+                        .clip(RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                AsyncImage(
+                    model = app.icon,
+                    contentDescription = app.label,
+                    colorFilter = themedColorFilter,
+                    modifier = Modifier
+                        .size(iconSize)
+                        .clip(RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            if (badgeCount > 0) {
+                Surface(
+                    color = Color(0xFFFF3B30),
+                    shape = CircleShape,
+                    border = BorderStroke(1.5.dp, Color.White),
+                    modifier = Modifier.offset(x = 6.dp, y = (-4).dp)
+                ) {
+                    Text(
+                        text = if (badgeCount > 99) "99+" else "$badgeCount",
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                    )
+                }
+            }
         }
 
         if (showLabel) {
@@ -1018,6 +1044,7 @@ fun ReorderableHomeAppItem(
     app: AppItem,
     index: Int,
     totalCount: Int,
+    badgeCount: Int = 0,
     isReordering: Boolean,
     wobbleAngle: Float,
     showLabel: Boolean,
@@ -1116,26 +1143,45 @@ fun ReorderableHomeAppItem(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (app.iconBitmap != null) {
-                Image(
-                    bitmap = app.iconBitmap,
-                    contentDescription = app.label,
-                    colorFilter = themedColorFilter,
-                    modifier = Modifier
-                        .size(iconSize)
-                        .clip(RoundedCornerShape(18.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                AsyncImage(
-                    model = app.icon,
-                    contentDescription = app.label,
-                    colorFilter = themedColorFilter,
-                    modifier = Modifier
-                        .size(iconSize)
-                        .clip(RoundedCornerShape(18.dp)),
-                    contentScale = ContentScale.Crop
-                )
+            Box(contentAlignment = Alignment.TopEnd) {
+                if (app.iconBitmap != null) {
+                    Image(
+                        bitmap = app.iconBitmap,
+                        contentDescription = app.label,
+                        colorFilter = themedColorFilter,
+                        modifier = Modifier
+                            .size(iconSize)
+                            .clip(RoundedCornerShape(18.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    AsyncImage(
+                        model = app.icon,
+                        contentDescription = app.label,
+                        colorFilter = themedColorFilter,
+                        modifier = Modifier
+                            .size(iconSize)
+                            .clip(RoundedCornerShape(18.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                if (badgeCount > 0) {
+                    Surface(
+                        color = Color(0xFFFF3B30),
+                        shape = CircleShape,
+                        border = BorderStroke(1.5.dp, Color.White),
+                        modifier = Modifier.offset(x = 6.dp, y = (-4).dp)
+                    ) {
+                        Text(
+                            text = if (badgeCount > 99) "99+" else "$badgeCount",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                        )
+                    }
+                }
             }
 
             if (showLabel) {
@@ -1170,6 +1216,7 @@ fun ReorderableDockAppItem(
     app: AppItem,
     index: Int,
     totalCount: Int,
+    badgeCount: Int = 0,
     isReordering: Boolean,
     wobbleAngle: Float,
     iconSize: Dp,
@@ -1266,26 +1313,45 @@ fun ReorderableDockAppItem(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            if (app.iconBitmap != null) {
-                Image(
-                    bitmap = app.iconBitmap,
-                    contentDescription = app.label,
-                    colorFilter = themedColorFilter,
-                    modifier = Modifier
-                        .size(iconSize)
-                        .clip(RoundedCornerShape(18.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                AsyncImage(
-                    model = app.icon,
-                    contentDescription = app.label,
-                    colorFilter = themedColorFilter,
-                    modifier = Modifier
-                        .size(iconSize)
-                        .clip(RoundedCornerShape(18.dp)),
-                    contentScale = ContentScale.Crop
-                )
+            Box(contentAlignment = Alignment.TopEnd) {
+                if (app.iconBitmap != null) {
+                    Image(
+                        bitmap = app.iconBitmap,
+                        contentDescription = app.label,
+                        colorFilter = themedColorFilter,
+                        modifier = Modifier
+                            .size(iconSize)
+                            .clip(RoundedCornerShape(18.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    AsyncImage(
+                        model = app.icon,
+                        contentDescription = app.label,
+                        colorFilter = themedColorFilter,
+                        modifier = Modifier
+                            .size(iconSize)
+                            .clip(RoundedCornerShape(18.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                if (badgeCount > 0) {
+                    Surface(
+                        color = Color(0xFFFF3B30),
+                        shape = CircleShape,
+                        border = BorderStroke(1.5.dp, Color.White),
+                        modifier = Modifier.offset(x = 6.dp, y = (-4).dp)
+                    ) {
+                        Text(
+                            text = if (badgeCount > 99) "99+" else "$badgeCount",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                        )
+                    }
+                }
             }
         }
     }
