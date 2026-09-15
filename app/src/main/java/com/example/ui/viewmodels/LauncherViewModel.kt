@@ -46,6 +46,9 @@ data class LauncherSettings(
     val showMusicWidget: Boolean = true,
     val showTasksWidget: Boolean = true,
     val showAppShortcutsWidget: Boolean = true,
+    val showQuickControlsWidget: Boolean = true,
+    val showWeatherGlanceWidget: Boolean = false,
+    val widgetOrder: List<String> = listOf("battery", "music", "tasks", "shortcuts", "controls"),
     val wallpaperType: String = "emerald", // "system", "emerald", "dark_amoled", "twilight", "ocean", "glass", "custom"
     val customWallpaperUri: String? = null,
     val wallpaperDim: Float = 0.15f
@@ -98,6 +101,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             showMusicWidget = prefs.getBoolean("show_music_widget", true),
             showTasksWidget = prefs.getBoolean("show_tasks_widget", true),
             showAppShortcutsWidget = prefs.getBoolean("show_app_shortcuts_widget", true),
+            showQuickControlsWidget = prefs.getBoolean("show_quick_controls_widget", true),
+            showWeatherGlanceWidget = prefs.getBoolean("show_weather_glance_widget", false),
+            widgetOrder = prefs.getString("widget_order", null)?.split(",")?.filter { it.isNotBlank() }
+                ?: listOf("battery", "music", "tasks", "shortcuts", "controls"),
             wallpaperType = prefs.getString("wallpaper_type", "emerald") ?: "emerald",
             customWallpaperUri = prefs.getString("custom_wallpaper_uri", null),
             wallpaperDim = prefs.getFloat("wallpaper_dim", 0.15f)
@@ -176,10 +183,68 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putBoolean("show_music_widget", newSettings.showMusicWidget)
             .putBoolean("show_tasks_widget", newSettings.showTasksWidget)
             .putBoolean("show_app_shortcuts_widget", newSettings.showAppShortcutsWidget)
+            .putBoolean("show_quick_controls_widget", newSettings.showQuickControlsWidget)
+            .putBoolean("show_weather_glance_widget", newSettings.showWeatherGlanceWidget)
+            .putString("widget_order", newSettings.widgetOrder.joinToString(","))
             .putString("wallpaper_type", newSettings.wallpaperType)
             .putString("custom_wallpaper_uri", newSettings.customWallpaperUri)
             .putFloat("wallpaper_dim", newSettings.wallpaperDim)
             .apply()
+    }
+
+    fun reorderWidgets(fromIndex: Int, toIndex: Int) {
+        val current = _settings.value.widgetOrder.toMutableList()
+        if (fromIndex in current.indices && toIndex in current.indices && fromIndex != toIndex) {
+            val item = current.removeAt(fromIndex)
+            current.add(toIndex, item)
+            updateSettings(_settings.value.copy(widgetOrder = current))
+        }
+    }
+
+    fun deleteWidget(widgetKey: String) {
+        val currentOrder = _settings.value.widgetOrder.filter { it != widgetKey }
+        val newSettings = when (widgetKey) {
+            "battery" -> _settings.value.copy(showDeviceCardWidget = false, widgetOrder = currentOrder)
+            "music" -> _settings.value.copy(showMusicWidget = false, widgetOrder = currentOrder)
+            "tasks" -> _settings.value.copy(showTasksWidget = false, widgetOrder = currentOrder)
+            "shortcuts" -> _settings.value.copy(showAppShortcutsWidget = false, widgetOrder = currentOrder)
+            "controls" -> _settings.value.copy(showQuickControlsWidget = false, widgetOrder = currentOrder)
+            "weather_glance" -> _settings.value.copy(showWeatherGlanceWidget = false, widgetOrder = currentOrder)
+            else -> _settings.value.copy(widgetOrder = currentOrder)
+        }
+        updateSettings(newSettings)
+    }
+
+    fun restoreWidget(widgetKey: String) {
+        val currentOrder = _settings.value.widgetOrder.toMutableList()
+        if (!currentOrder.contains(widgetKey)) {
+            currentOrder.add(widgetKey)
+        }
+        val newSettings = when (widgetKey) {
+            "battery" -> _settings.value.copy(showDeviceCardWidget = true, widgetOrder = currentOrder)
+            "music" -> _settings.value.copy(showMusicWidget = true, widgetOrder = currentOrder)
+            "tasks" -> _settings.value.copy(showTasksWidget = true, widgetOrder = currentOrder)
+            "shortcuts" -> _settings.value.copy(showAppShortcutsWidget = true, widgetOrder = currentOrder)
+            "controls" -> _settings.value.copy(showQuickControlsWidget = true, widgetOrder = currentOrder)
+            "weather_glance" -> _settings.value.copy(showWeatherGlanceWidget = true, widgetOrder = currentOrder)
+            else -> _settings.value.copy(widgetOrder = currentOrder)
+        }
+        updateSettings(newSettings)
+    }
+
+    fun resetWidgetsToDefault() {
+        val defaultOrder = listOf("battery", "music", "tasks", "shortcuts", "controls")
+        updateSettings(
+            _settings.value.copy(
+                showDeviceCardWidget = true,
+                showMusicWidget = true,
+                showTasksWidget = true,
+                showAppShortcutsWidget = true,
+                showQuickControlsWidget = true,
+                showWeatherGlanceWidget = false,
+                widgetOrder = defaultOrder
+            )
+        )
     }
 
     fun reorderHomeApps(fromIndex: Int, toIndex: Int) {

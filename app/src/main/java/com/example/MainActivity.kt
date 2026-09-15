@@ -276,7 +276,10 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                     onAppClick = { viewModel.launchApp(it) },
                     onOpenDrawer = { isDrawerOpen = true },
                     onAiClick = { isAiAssistantOpen = true },
-                    onSettingsClick = { isSettingsOpen = true }
+                    onSettingsClick = { isSettingsOpen = true },
+                    onReorderWidget = { from, to -> viewModel.reorderWidgets(from, to) },
+                    onDeleteWidget = { widgetKey -> viewModel.deleteWidget(widgetKey) },
+                    onOpenManageWidgets = { isManageWidgetsOpen = true }
                 )
             } else {
                 // Main Home Screen Content
@@ -704,6 +707,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             ManageHomeWidgetsBottomSheet(
                 settings = settings,
                 onUpdateSettings = { viewModel.updateSettings(it) },
+                onResetOrder = { viewModel.resetWidgetsToDefault() },
                 onDismissRequest = { isManageWidgetsOpen = false }
             )
         }
