@@ -9,6 +9,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
@@ -443,12 +445,23 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
 }
 
         // --- iOS: Ultra-Premium Glassmorphism Dock with Swipe Up to Open Drawer ---
-        if (!isDrawerOpen) {
+        // Hidden when on the Widget screen (page 0) to maximize space for widgets, and when Drawer is open
+        AnimatedVisibility(
+            visible = !isDrawerOpen && pagerState.currentPage != 0,
+            enter = fadeIn(tween(220)) + slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ),
+            exit = fadeOut(tween(180)) + slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
             var dockDragAmount by remember { mutableFloatStateOf(0f) }
 
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .padding(bottom = 20.dp, start = 16.dp, end = 16.dp)
                     .fillMaxWidth()
                     .height(92.dp)

@@ -184,7 +184,7 @@ fun MinusOneScreen(
             .padding(horizontal = 16.dp),
         contentPadding = PaddingValues(
             top = if (settings.fullscreenMode) 20.dp else 48.dp,
-            bottom = 220.dp // Ample clearance guarantees no dock overlap
+            bottom = 48.dp // Dock is hidden on widget screen to maximize space
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
