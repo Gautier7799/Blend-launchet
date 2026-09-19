@@ -1,8 +1,10 @@
 package com.example.ui.viewmodels
 
 import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
@@ -12,8 +14,11 @@ import com.example.domain.AppItem
 import com.example.service.BlendAccessibilityService
 import com.example.service.BlendNotificationListenerService
 import com.example.util.SystemPermissionsHelper
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
@@ -73,8 +78,42 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _dockAppPackages = MutableStateFlow<List<String>>(loadDockAppPackages())
     val dockAppPackages: StateFlow<List<String>> = _dockAppPackages.asStateFlow()
 
+    private val _closeOverlaysTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val closeOverlaysTrigger: SharedFlow<Unit> = _closeOverlaysTrigger.asSharedFlow()
+
+    fun requestCloseOverlays() {
+        _closeOverlaysTrigger.tryEmit(Unit)
+    }
+
+    private val packageReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            loadApps()
+        }
+    }
+
     init {
         loadApps()
+        registerPackageReceiver()
+    }
+
+    private fun registerPackageReceiver() {
+        try {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_PACKAGE_ADDED)
+                addAction(Intent.ACTION_PACKAGE_REMOVED)
+                addAction(Intent.ACTION_PACKAGE_REPLACED)
+                addAction(Intent.ACTION_PACKAGE_CHANGED)
+                addDataScheme("package")
+            }
+            getApplication<Application>().registerReceiver(packageReceiver, filter)
+        } catch (_: Exception) {}
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        try {
+            getApplication<Application>().unregisterReceiver(packageReceiver)
+        } catch (_: Exception) {}
     }
 
     private fun loadSettings(): LauncherSettings {
