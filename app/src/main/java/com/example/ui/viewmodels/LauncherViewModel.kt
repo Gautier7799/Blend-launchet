@@ -60,6 +60,7 @@ data class LauncherSettings(
     val iosWidgetCity: String = "", // empty means auto-detect from device location/region
     val showWidgetLabels: Boolean = true,
     val showTopBarWidgets: Boolean = false,
+    val widgetTopSpacingDp: Int = 26, // lower the widget from top edge/status bar
     val widgetOrder: List<String> = listOf("battery", "music", "tasks", "shortcuts", "controls"),
     val wallpaperType: String = "emerald", // "system", "emerald", "dark_amoled", "twilight", "ocean", "glass", "custom"
     val customWallpaperUri: String? = null,
@@ -154,6 +155,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             iosWidgetCity = prefs.getString("ios_widget_city", "") ?: "",
             showWidgetLabels = prefs.getBoolean("show_widget_labels", true),
             showTopBarWidgets = prefs.getBoolean("show_top_bar_widgets", false),
+            widgetTopSpacingDp = prefs.getInt("widget_top_spacing", 26),
             widgetOrder = prefs.getString("widget_order", null)?.split(",")?.filter { it.isNotBlank() }
                 ?: listOf("battery", "music", "tasks", "shortcuts", "controls"),
             wallpaperType = prefs.getString("wallpaper_type", "emerald") ?: "emerald",
@@ -241,11 +243,22 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putString("ios_widget_city", newSettings.iosWidgetCity)
             .putBoolean("show_widget_labels", newSettings.showWidgetLabels)
             .putBoolean("show_top_bar_widgets", newSettings.showTopBarWidgets)
+            .putInt("widget_top_spacing", newSettings.widgetTopSpacingDp)
             .putString("widget_order", newSettings.widgetOrder.joinToString(","))
             .putString("wallpaper_type", newSettings.wallpaperType)
             .putString("custom_wallpaper_uri", newSettings.customWallpaperUri)
             .putFloat("wallpaper_dim", newSettings.wallpaperDim)
             .apply()
+    }
+
+    fun setIconSize(sizeDp: Int) {
+        val clamped = sizeDp.coerceIn(40, 84)
+        updateSettings(_settings.value.copy(iconSizeDp = clamped))
+    }
+
+    fun setWidgetTopSpacing(spacingDp: Int) {
+        val clamped = spacingDp.coerceIn(8, 70)
+        updateSettings(_settings.value.copy(widgetTopSpacingDp = clamped))
     }
 
     fun reorderWidgets(fromIndex: Int, toIndex: Int) {

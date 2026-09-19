@@ -25,6 +25,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import kotlinx.coroutines.delay
+import com.example.ui.screens.IconResizeTouchBar
+import com.example.ui.screens.PinchZoomHudPill
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -248,6 +253,22 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     var accumulatedDrag by remember { mutableFloatStateOf(0f) }
     val pagerState = rememberPagerState(initialPage = 1, pageCount = { 2 })
 
+    var isTouchResizeBarOpen by remember { mutableStateOf(false) }
+    var isWidgetEditMode by remember { mutableStateOf(false) }
+    var showPinchHud by remember { mutableStateOf(false) }
+    var pinchZoomLevel by remember { mutableFloatStateOf(settings.iconSizeDp.toFloat()) }
+
+    LaunchedEffect(settings.iconSizeDp) {
+        pinchZoomLevel = settings.iconSizeDp.toFloat()
+    }
+
+    LaunchedEffect(showPinchHud, settings.iconSizeDp) {
+        if (showPinchHud) {
+            delay(2600)
+            showPinchHud = false
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -341,9 +362,25 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             if (isReorderingMode) {
                                 isReorderingMode = false
                             }
+                            if (isWidgetEditMode) {
+                                isWidgetEditMode = false
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectTransformGestures { _, _, zoom, _ ->
+                                if (kotlin.math.abs(zoom - 1f) > 0.012f) {
+                                    val newSize = (pinchZoomLevel * zoom).coerceIn(40f, 82f)
+                                    pinchZoomLevel = newSize
+                                    val rounded = newSize.toInt()
+                                    if (rounded != settings.iconSizeDp) {
+                                        viewModel.setIconSize(rounded)
+                                        showPinchHud = true
+                                    }
+                                }
+                            }
                         }
                         .padding(
-                            top = if (settings.fullscreenMode) 24.dp else 52.dp,
+                            top = if (settings.fullscreenMode) 46.dp else 68.dp,
                             start = 16.dp,
                             end = 16.dp
                         )
@@ -361,11 +398,33 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
 
                         // iOS 17 Home Screen Widgets (Weather + Battery pair or Quad Multi-Device Battery)
                         if (settings.showIosHomeWidgets) {
+                            // Extra top spacer to lower the widget away from status bar as requested ("انزل قليلا widget")
+                            Spacer(modifier = Modifier.height(settings.widgetTopSpacingDp.dp))
                             IosHomeWidgetsRow(
                                 settings = settings,
-                                onOpenSettings = { isSettingsOpen = true }
+                                onOpenSettings = { isSettingsOpen = true },
+                                isEditMode = isWidgetEditMode,
+                                onToggleEditMode = { isWidgetEditMode = !isWidgetEditMode },
+                                onDeleteWidget = {
+                                    viewModel.updateSettings(settings.copy(showIosHomeWidgets = false))
+                                    isWidgetEditMode = false
+                                },
+                                onToggleStyle = {
+                                    val nextStyle = if (settings.iosWidgetStyle == "pair") "quad_battery" else "pair"
+                                    viewModel.updateSettings(settings.copy(iosWidgetStyle = nextStyle))
+                                },
+                                onLowerWidget = {
+                                    viewModel.setWidgetTopSpacing(settings.widgetTopSpacingDp + 8)
+                                },
+                                onRaiseWidget = {
+                                    viewModel.setWidgetTopSpacing(settings.widgetTopSpacingDp - 8)
+                                },
+                                onOpenTouchControls = {
+                                    isTouchResizeBarOpen = true
+                                    isWidgetEditMode = false
+                                }
                             )
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                         }
                     }
 
@@ -503,9 +562,9 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
 }
 
         // --- iOS: Ultra-Premium Glassmorphism Dock with Swipe Up to Open Drawer ---
-        // Hidden when on the Widget screen (page 0) to maximize space for widgets, and when Drawer is open
+        // Hidden when on the Widget screen (page 0) to maximize space for widgets, when Drawer is open, or when resizing icons
         AnimatedVisibility(
-            visible = !isDrawerOpen && pagerState.currentPage != 0,
+            visible = !isDrawerOpen && pagerState.currentPage != 0 && !isTouchResizeBarOpen,
             enter = fadeIn(tween(220)) + slideInVertically(
                 initialOffsetY = { it },
                 animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
@@ -759,6 +818,9 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 canMoveDockLeft = isOnDock && dockIndex > 0,
                 canMoveDockRight = isOnDock && dockIndex < dockAppPackages.size - 1,
                 onStartReorder = { isReorderingMode = true },
+                onResizeIconsClick = {
+                    isTouchResizeBarOpen = true
+                },
                 onDismissRequest = { selectedActionApp = null }
             )
         }
@@ -801,6 +863,48 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 onUpdateSettings = { viewModel.updateSettings(it) },
                 onResetOrder = { viewModel.resetWidgetsToDefault() },
                 onDismissRequest = { isManageWidgetsOpen = false }
+            )
+        }
+
+        // --- Floating Pinch Zoom HUD Indicator ---
+        AnimatedVisibility(
+            visible = showPinchHud && !isTouchResizeBarOpen && !isDrawerOpen,
+            enter = fadeIn(tween(180)) + slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut(tween(180)) + slideOutVertically(targetOffsetY = { -it }),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 46.dp)
+        ) {
+            PinchZoomHudPill(
+                iconSize = settings.iconSizeDp,
+                onOpenFullControls = {
+                    showPinchHud = false
+                    isTouchResizeBarOpen = true
+                }
+            )
+        }
+
+        // --- Floating Touch Icon & Widget Sizing Controller Bar ---
+        AnimatedVisibility(
+            visible = isTouchResizeBarOpen && !isDrawerOpen,
+            enter = fadeIn(tween(220)) + slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ),
+            exit = fadeOut(tween(180)) + slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 18.dp)
+        ) {
+            IconResizeTouchBar(
+                currentIconSize = settings.iconSizeDp,
+                currentWidgetSpacing = settings.widgetTopSpacingDp,
+                onIconSizeChange = { viewModel.setIconSize(it) },
+                onWidgetSpacingChange = { viewModel.setWidgetTopSpacing(it) },
+                onDismiss = { isTouchResizeBarOpen = false }
             )
         }
     }

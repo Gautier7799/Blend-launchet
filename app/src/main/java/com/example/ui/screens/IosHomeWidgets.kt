@@ -11,7 +11,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -52,10 +54,18 @@ import com.example.ui.viewmodels.LauncherSettings
  * - "pair": Square Weather Widget (2x2) + Square Battery Ring Widget (2x2) side-by-side
  * - "quad_battery": Wide Multi-Device Battery Widget (4 rings: Phone, Watch, AirPods, Battery Pack)
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun IosHomeWidgetsRow(
     settings: LauncherSettings,
     onOpenSettings: () -> Unit,
+    isEditMode: Boolean = false,
+    onToggleEditMode: () -> Unit = {},
+    onDeleteWidget: () -> Unit = {},
+    onToggleStyle: () -> Unit = {},
+    onLowerWidget: () -> Unit = {},
+    onRaiseWidget: () -> Unit = {},
+    onOpenTouchControls: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (!settings.showIosHomeWidgets) return
@@ -126,58 +136,260 @@ fun IosHomeWidgetsRow(
         }
     }
 
-    Column(
+    // Outer Container with Touch/Long-Press handling
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 6.dp)
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center
     ) {
-        when (settings.iosWidgetStyle) {
-            "quad_battery" -> {
-                // Wide Multi-Device Battery Widget (4 Devices) from Screenshot 2
-                IosQuadBatteryWidget(
-                    batteryPercent = batteryPercent,
-                    isCharging = isCharging,
-                    showLabels = settings.showWidgetLabels,
-                    onOpenBatterySettings = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        launchBatterySettings(context)
-                    }
-                )
-            }
-            else -> {
-                // Default: Pair of Square 2x2 Widgets (Weather + Battery) from Screenshot 1 & 3
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Floating "Supprimer" / Delete Pill above widget in edit mode (as in Screenshot 1)
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isEditMode,
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(),
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.White.copy(alpha = 0.95f),
+                    shadowElevation = 8.dp,
+                    border = BorderStroke(1.dp, Color(0xFFC486EB).copy(alpha = 0.6f)),
+                    modifier = Modifier
+                        .padding(bottom = 8.dp)
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onDeleteWidget()
+                        }
                 ) {
-                    // 1. iOS Weather Square Widget (2x2)
-                    Box(modifier = Modifier.weight(1f)) {
-                        IosWeatherSquareWidget(
-                            weather = liveWeather,
-                            showLabels = settings.showWidgetLabels,
-                            onWeatherClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                launchWeatherApp(context)
-                            }
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Supprimer",
+                            tint = Color(0xFF1E2125),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Supprimer",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E2125)
                         )
                     }
+                }
+            }
 
-                    // 2. iOS Battery Ring Square Widget (2x2)
-                    Box(modifier = Modifier.weight(1f)) {
-                        IosBatterySquareWidget(
+            // Widget Content Box with optional Resize handles
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (isEditMode) {
+                            Modifier
+                                .border(
+                                    width = 2.dp,
+                                    color = Color(0xFFC486EB),
+                                    shape = RoundedCornerShape(30.dp)
+                                )
+                                .padding(6.dp)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .combinedClickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            if (isEditMode) {
+                                onToggleEditMode()
+                            }
+                        },
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onToggleEditMode()
+                        }
+                    )
+            ) {
+                when (settings.iosWidgetStyle) {
+                    "quad_battery" -> {
+                        // Wide Multi-Device Battery Widget (4 Devices) from Screenshot 2
+                        IosQuadBatteryWidget(
                             batteryPercent = batteryPercent,
                             isCharging = isCharging,
                             showLabels = settings.showWidgetLabels,
-                            onBatteryClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                launchBatterySettings(context)
+                            onOpenBatterySettings = {
+                                if (!isEditMode) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    launchBatterySettings(context)
+                                } else {
+                                    onToggleEditMode()
+                                }
                             }
                         )
+                    }
+                    else -> {
+                        // Default: Pair of Square 2x2 Widgets (Weather + Battery)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // 1. iOS Weather Square Widget (2x2)
+                            Box(modifier = Modifier.weight(1f)) {
+                                IosWeatherSquareWidget(
+                                    weather = liveWeather,
+                                    showLabels = settings.showWidgetLabels,
+                                    onWeatherClick = {
+                                        if (!isEditMode) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            launchWeatherApp(context)
+                                        } else {
+                                            onToggleEditMode()
+                                        }
+                                    }
+                                )
+                            }
+
+                            // 2. iOS Battery Ring Square Widget (2x2)
+                            Box(modifier = Modifier.weight(1f)) {
+                                IosBatterySquareWidget(
+                                    batteryPercent = batteryPercent,
+                                    isCharging = isCharging,
+                                    showLabels = settings.showWidgetLabels,
+                                    onBatteryClick = {
+                                        if (!isEditMode) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            launchBatterySettings(context)
+                                        } else {
+                                            onToggleEditMode()
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Four Circular Touch Resize Handles on borders (matching Screenshot 1)
+                if (isEditMode) {
+                    // Top handle
+                    ResizeHandleDot(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = (-6).dp),
+                        onClick = onRaiseWidget
+                    )
+
+                    // Bottom handle: Lower widget
+                    ResizeHandleDot(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .offset(y = 6.dp),
+                        onClick = onLowerWidget
+                    )
+
+                    // Left handle: Toggle style
+                    ResizeHandleDot(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .offset(x = (-6).dp),
+                        onClick = onToggleStyle
+                    )
+
+                    // Right handle: Toggle style
+                    ResizeHandleDot(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .offset(x = 6.dp),
+                        onClick = onToggleStyle
+                    )
+                }
+            }
+
+            // Quick Actions Strip in Edit Mode
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isEditMode,
+                enter = androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.fadeOut()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF161922).copy(alpha = 0.90f))
+                        .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onLowerWidget()
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text("↓ أنزل الودجت", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Box(modifier = Modifier.width(1.dp).height(14.dp).background(Color.White.copy(alpha = 0.25f)))
+
+                    TextButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onToggleStyle()
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text("تغيير الشكل", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    }
+
+                    Box(modifier = Modifier.width(1.dp).height(14.dp).background(Color.White.copy(alpha = 0.25f)))
+
+                    TextButton(
+                        onClick = onOpenTouchControls,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text("تحكم باللمس", color = Color(0xFF64D2FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Box(modifier = Modifier.width(1.dp).height(14.dp).background(Color.White.copy(alpha = 0.25f)))
+
+                    TextButton(
+                        onClick = onToggleEditMode,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text("تم ✓", color = Color(0xFF34C759), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * Circular resize handle dot (as in Screenshot 1)
+ */
+@Composable
+private fun ResizeHandleDot(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .size(16.dp)
+            .shadow(4.dp, CircleShape)
+            .clickable(onClick = onClick),
+        shape = CircleShape,
+        color = Color(0xFFF3E8FC),
+        border = BorderStroke(2.dp, Color(0xFFC486EB))
+    ) {}
 }
 
 /**

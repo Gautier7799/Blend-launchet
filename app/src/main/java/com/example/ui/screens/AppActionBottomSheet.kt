@@ -44,6 +44,7 @@ fun AppActionBottomSheet(
     canMoveDockLeft: Boolean = false,
     canMoveDockRight: Boolean = false,
     onStartReorder: (() -> Unit)? = null,
+    onResizeIconsClick: (() -> Unit)? = null,
     onDismissRequest: () -> Unit
 ) {
     val context = LocalContext.current
@@ -274,6 +275,18 @@ fun AppActionBottomSheet(
                     onClick = {
                         viewModel.addAppToHome(app.packageName)
                         onDismissRequest()
+                    }
+                )
+            }
+
+            if (onResizeIconsClick != null) {
+                ActionItemRow(
+                    icon = Icons.Default.ZoomIn,
+                    title = "حجم الأيقونات (تكبير / تصغير باللمس)",
+                    tint = Color(0xFF007AFF),
+                    onClick = {
+                        onDismissRequest()
+                        onResizeIconsClick()
                     }
                 )
             }
