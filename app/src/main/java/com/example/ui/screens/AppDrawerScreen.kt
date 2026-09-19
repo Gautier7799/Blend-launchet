@@ -67,15 +67,15 @@ import com.example.ui.viewmodels.LauncherSettings
 
 // Definitions for iOS-style categories
 private val categoryMetadata = listOf(
-    AppCategoryInfo("social", "التواصل والرسائل", "Social", "💬", 1),
-    AppCategoryInfo("utilities", "الأدوات والنظام", "Utilities", "🛠️", 2),
-    AppCategoryInfo("productivity", "الإنتاجية والعمل", "Productivity", "💼", 3),
-    AppCategoryInfo("media", "الترفيه والوسائط", "Media", "🎬", 4),
+    AppCategoryInfo("social", "التواصل", "Social", "💬", 1),
+    AppCategoryInfo("utilities", "الأدوات", "Utilities", "🛠️", 2),
+    AppCategoryInfo("productivity", "الإنتاجية", "Productivity", "💼", 3),
+    AppCategoryInfo("media", "الترفيه والوسائط", "Entertainment", "🎬", 4),
     AppCategoryInfo("games", "الألعاب", "Games", "🎮", 5),
-    AppCategoryInfo("navigation", "الملاحة والسفر", "Navigation", "🧭", 6),
-    AppCategoryInfo("shopping", "التسوق ونمط الحياة", "Shopping", "🛍️", 7),
-    AppCategoryInfo("browsing", "المعلومات والتصفح", "Information", "🌐", 8),
-    AppCategoryInfo("other", "تطبيقات متنوعة", "Other", "📦", 9)
+    AppCategoryInfo("navigation", "الملاحة والسفر", "Travel", "🧭", 6),
+    AppCategoryInfo("shopping", "التسوق", "Shopping", "🛍️", 7),
+    AppCategoryInfo("browsing", "المعلومات", "Information", "🌐", 8),
+    AppCategoryInfo("other", "أخرى", "Other", "📦", 9)
 )
 
 enum class DrawerDisplayMode {
@@ -120,14 +120,14 @@ fun AppDrawer(
 
     val isDarkTheme = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
 
-    // Frosted Glass Blur styling
-    val drawerBgColor = if (isDarkTheme) Color(0xFF131620).copy(alpha = 0.84f) else Color(0xFFE9EDF5).copy(alpha = 0.82f)
-    val drawerBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.65f)
-    val handleColor = if (isDarkTheme) Color(0xFF90939E) else Color(0xFF4A4E58)
-    val pillBgColor = if (isDarkTheme) Color(0xFF242834).copy(alpha = 0.90f) else Color(0xFFF4F6FC).copy(alpha = 0.95f)
-    val pillBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.07f)
-    val iconTint = if (isDarkTheme) Color(0xFFC4C7D0) else Color(0xFF49454F)
-    val appItemTextColor = if (isDarkTheme) Color.White else Color(0xFF1F2328)
+    // Frosted Glass styling matching iOS App Library
+    val drawerBgColor = Color.Black.copy(alpha = 0.20f)
+    val drawerBorderColor = Color.White.copy(alpha = 0.18f)
+    val handleColor = Color.White.copy(alpha = 0.45f)
+    val pillBgColor = Color.White.copy(alpha = 0.20f)
+    val pillBorderColor = Color.White.copy(alpha = 0.35f)
+    val iconTint = Color.White.copy(alpha = 0.85f)
+    val appItemTextColor = Color.White
 
     // Rounded drawer sheet with frosted blur styling
     Surface(
@@ -139,20 +139,20 @@ fun AppDrawer(
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)),
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         color = drawerBgColor,
-        border = BorderStroke(1.2.dp, drawerBorderColor),
-        shadowElevation = 14.dp
+        border = BorderStroke(1.dp, drawerBorderColor),
+        shadowElevation = 0.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 14.dp)
+                .padding(horizontal = 16.dp)
         ) {
             // Drag handle at top (dismiss gesture only on header to avoid lag in grid scroll)
             var headerDragY by remember { mutableFloatStateOf(0f) }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp, bottom = 6.dp)
+                    .padding(top = 10.dp, bottom = 8.dp)
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
                             onDragStart = { headerDragY = 0f },
@@ -174,57 +174,56 @@ fun AppDrawer(
             ) {
                 Box(
                     modifier = Modifier
-                        .width(40.dp)
+                        .width(36.dp)
                         .height(4.dp)
                         .clip(CircleShape)
                         .background(handleColor)
                 )
             }
 
-            // --- Pill Search Bar (Google G, Search, Voice, Lens, Settings) ---
+            // --- iOS App Library Pill Search Bar ---
             Surface(
                 shape = CircleShape,
                 color = pillBgColor,
                 border = BorderStroke(1.dp, pillBorderColor),
-                shadowElevation = 1.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
+                    .height(46.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 12.dp),
+                        .padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_google_g),
-                        contentDescription = "Google",
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .clickable { launchGoogleSearch(context) }
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = iconTint,
+                        modifier = Modifier.size(19.dp)
                     )
 
                     Spacer(modifier = Modifier.width(10.dp))
+
+                    val searchPlaceholder = if (java.util.Locale.getDefault().language == "ar") "مكتبة التطبيقات" else "App Library"
 
                     BasicTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         singleLine = true,
                         textStyle = TextStyle(
-                            color = if (isDarkTheme) Color.White else Color(0xFF1F2328),
+                            color = Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Normal
                         ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        cursorBrush = SolidColor(Color.White),
                         modifier = Modifier.weight(1f),
                         decorationBox = { innerTextField ->
                             Box(contentAlignment = Alignment.CenterStart) {
                                 if (searchQuery.isEmpty()) {
                                     Text(
-                                        "Rechercher...",
-                                        color = if (isDarkTheme) Color(0xFF8E9199) else Color(0xFF74777F),
+                                        searchPlaceholder,
+                                        color = Color.White.copy(alpha = 0.65f),
                                         fontSize = 15.sp
                                     )
                                 }
@@ -249,23 +248,11 @@ fun AppDrawer(
 
                     IconButton(
                         onClick = { launchVoiceSearch(context) },
-                        modifier = Modifier.size(34.dp)
+                        modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Mic,
                             contentDescription = "Recherche vocale",
-                            tint = iconTint,
-                            modifier = Modifier.size(21.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { launchGoogleLens(context) },
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_google_lens),
-                            contentDescription = "Google Lens",
                             tint = iconTint,
                             modifier = Modifier.size(20.dp)
                         )
@@ -273,91 +260,21 @@ fun AppDrawer(
 
                     IconButton(
                         onClick = onSettingsClick,
-                        modifier = Modifier.size(34.dp)
+                        modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Paramètres",
                             tint = iconTint,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(19.dp)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // --- Segmented Mode Switcher (Only visible when not actively searching) ---
-            if (searchQuery.isEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = if (isDarkTheme) Color(0xFF222632).copy(alpha = 0.70f) else Color(0xFFE2E6F0).copy(alpha = 0.70f),
-                        border = BorderStroke(1.dp, if (isDarkTheme) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.50f)),
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(3.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // iOS Boxes Mode
-                            val isIosActive = displayMode == DrawerDisplayMode.IOS_BOXES
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = if (isIosActive) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable { displayMode = DrawerDisplayMode.IOS_BOXES }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "🗂️ صناديق iOS",
-                                        fontSize = 12.sp,
-                                        fontWeight = if (isIosActive) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isIosActive) MaterialTheme.colorScheme.onPrimary else if (isDarkTheme) Color(0xFFC4C7D0) else Color(0xFF4A4E58)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(4.dp))
-
-                            // All Apps Grid Mode
-                            val isGridActive = displayMode == DrawerDisplayMode.ALL_APPS_GRID
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = if (isGridActive) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable { displayMode = DrawerDisplayMode.ALL_APPS_GRID }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "📱 كل التطبيقات (${apps.size})",
-                                        fontSize = 12.sp,
-                                        fontWeight = if (isGridActive) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isGridActive) MaterialTheme.colorScheme.onPrimary else if (isDarkTheme) Color(0xFFC4C7D0) else Color(0xFF4A4E58)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // --- Content View: Search Results OR iOS Category Boxes OR Classic Grid ---
+            // --- Content View: Search Results OR iOS App Library Category Boxes ---
             if (searchQuery.isNotEmpty()) {
                 // Search Results Grid
                 LazyVerticalGrid(
@@ -374,7 +291,7 @@ fun AppDrawer(
                             app = app,
                             badgeCount = notificationCounts[app.packageName] ?: 0,
                             textColor = appItemTextColor,
-                            shadow = false,
+                            shadow = true,
                             showLabel = settings.showLabels,
                             iconSize = settings.iconSizeDp.dp,
                             onClick = { onAppClick(app.packageName) },
@@ -382,58 +299,31 @@ fun AppDrawer(
                         )
                     }
                 }
-            } else when (displayMode) {
-                DrawerDisplayMode.IOS_BOXES -> {
-                    // --- iOS App Library Category Boxes (2 columns) ---
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        contentPadding = PaddingValues(top = 6.dp, bottom = 90.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        items(
-                            items = categorizedApps,
-                            key = { it.first.id },
-                            contentType = { "category_box" }
-                        ) { (category, categoryAppList) ->
-                            IosCategoryBox(
-                                category = category,
-                                apps = categoryAppList,
-                                isDarkTheme = isDarkTheme,
-                                notificationCounts = notificationCounts,
-                                onAppClick = onAppClick,
-                                onAppLongClick = onAppLongClick,
-                                onExpandCategory = {
-                                    expandedCategory = category to categoryAppList
-                                }
-                            )
-                        }
-                    }
-                }
-                DrawerDisplayMode.ALL_APPS_GRID -> {
-                    // --- Classic A-Z Grid with Ultra-smooth 120 FPS performance ---
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(settings.gridColumns),
-                        contentPadding = PaddingValues(top = 6.dp, bottom = 80.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        items(
-                            items = apps,
-                            key = { it.packageName },
-                            contentType = { "app_icon" }
-                        ) { app ->
-                            AppIconItem(
-                                app = app,
-                                badgeCount = notificationCounts[app.packageName] ?: 0,
-                                textColor = appItemTextColor,
-                                shadow = false,
-                                showLabel = settings.showLabels,
-                                iconSize = settings.iconSizeDp.dp,
-                                onClick = { onAppClick(app.packageName) },
-                                onLongClick = { onAppLongClick(app) }
-                            )
-                        }
+            } else {
+                // --- Pure iOS App Library Category Boxes (2 columns) ---
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 90.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(
+                        items = categorizedApps,
+                        key = { it.first.id },
+                        contentType = { "category_box" }
+                    ) { (category, categoryAppList) ->
+                        IosCategoryBox(
+                            category = category,
+                            apps = categoryAppList,
+                            isDarkTheme = isDarkTheme,
+                            notificationCounts = notificationCounts,
+                            onAppClick = onAppClick,
+                            onAppLongClick = onAppLongClick,
+                            onExpandCategory = {
+                                expandedCategory = category to categoryAppList
+                            }
+                        )
                     }
                 }
             }
@@ -471,297 +361,252 @@ fun IosCategoryBox(
     onAppLongClick: (AppItem) -> Unit,
     onExpandCategory: () -> Unit
 ) {
-    val boxBgColor = if (isDarkTheme) Color(0xFF1E222D).copy(alpha = 0.70f) else Color.White.copy(alpha = 0.55f)
-    val boxBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.60f)
-    val titleColor = if (isDarkTheme) Color(0xFFF0F2F7) else Color(0xFF1A1D24)
+    val boxBgColor = Color.White.copy(alpha = if (isDarkTheme) 0.14f else 0.24f)
+    val boxBorderColor = Color.White.copy(alpha = if (isDarkTheme) 0.22f else 0.42f)
+    val currentLocale = java.util.Locale.getDefault().language
+    val categoryTitle = if (currentLocale == "ar") category.titleAr else category.titleEn
 
-    Surface(
-        shape = RoundedCornerShape(22.dp),
-        color = boxBgColor,
-        border = BorderStroke(1.dp, boxBorderColor),
-        shadowElevation = 2.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
+        Surface(
+            shape = RoundedCornerShape(26.dp),
+            color = boxBgColor,
+            border = BorderStroke(1.dp, boxBorderColor),
+            shadowElevation = 2.dp,
             modifier = Modifier
-                .padding(10.dp)
                 .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(26.dp))
+                .clickable { onExpandCategory() }
         ) {
-            // Category Header with click to expand
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onExpandCategory() }
-                    .padding(vertical = 3.dp, horizontal = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "${category.iconEmoji} ${category.titleAr}",
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = titleColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-
-                Surface(
-                    shape = CircleShape,
-                    color = if (isDarkTheme) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.07f)
-                ) {
-                    Text(
-                        text = "${apps.size}",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = titleColor.copy(alpha = 0.75f),
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 2x2 Grid of Apps inside the Box (iOS App Library style)
             val directApps = apps.take(if (apps.size <= 4) 4 else 3)
             val hasMoreCluster = apps.size > 4
             val remainingApps = if (hasMoreCluster) apps.drop(3).take(4) else emptyList()
 
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(11.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Row 1 (Items 0 and 1)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (directApps.isNotEmpty()) {
                         MiniAppSlot(
                             app = directApps[0],
                             badgeCount = notificationCounts[directApps[0].packageName] ?: 0,
-                            isDarkTheme = isDarkTheme,
                             onClick = { onAppClick(directApps[0].packageName) },
-                            onLongClick = { onAppLongClick(directApps[0]) },
-                            modifier = Modifier.weight(1f)
+                            onLongClick = { onAppLongClick(directApps[0]) }
                         )
                     } else {
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.size(52.dp))
                     }
-
-                    Spacer(modifier = Modifier.width(6.dp))
 
                     if (directApps.size > 1) {
                         MiniAppSlot(
                             app = directApps[1],
                             badgeCount = notificationCounts[directApps[1].packageName] ?: 0,
-                            isDarkTheme = isDarkTheme,
                             onClick = { onAppClick(directApps[1].packageName) },
-                            onLongClick = { onAppLongClick(directApps[1]) },
-                            modifier = Modifier.weight(1f)
+                            onLongClick = { onAppLongClick(directApps[1]) }
                         )
                     } else {
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.size(52.dp))
                     }
                 }
 
                 // Row 2 (Items 2 and 3 OR Cluster Folder)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (directApps.size > 2) {
                         MiniAppSlot(
                             app = directApps[2],
                             badgeCount = notificationCounts[directApps[2].packageName] ?: 0,
-                            isDarkTheme = isDarkTheme,
                             onClick = { onAppClick(directApps[2].packageName) },
-                            onLongClick = { onAppLongClick(directApps[2]) },
-                            modifier = Modifier.weight(1f)
+                            onLongClick = { onAppLongClick(directApps[2]) }
                         )
                     } else {
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.size(52.dp))
                     }
-
-                    Spacer(modifier = Modifier.width(6.dp))
 
                     if (directApps.size == 4) {
                         // Exactly 4 apps: show 4th app directly
                         MiniAppSlot(
                             app = directApps[3],
                             badgeCount = notificationCounts[directApps[3].packageName] ?: 0,
-                            isDarkTheme = isDarkTheme,
                             onClick = { onAppClick(directApps[3].packageName) },
-                            onLongClick = { onAppLongClick(directApps[3]) },
-                            modifier = Modifier.weight(1f)
+                            onLongClick = { onAppLongClick(directApps[3]) }
                         )
                     } else if (hasMoreCluster) {
                         // More than 4 apps: show iOS 2x2 folder thumbnail cluster
                         ClusterFolderSlot(
                             apps = remainingApps,
-                            totalRemaining = apps.size - 3,
                             isDarkTheme = isDarkTheme,
-                            onClick = onExpandCategory,
-                            modifier = Modifier.weight(1f)
+                            onClick = onExpandCategory
                         )
                     } else {
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.size(52.dp))
                     }
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Clean Category Label below the box
+        Text(
+            text = categoryTitle,
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = TextStyle(
+                shadow = androidx.compose.ui.graphics.Shadow(
+                    color = Color.Black.copy(alpha = 0.70f),
+                    blurRadius = 4f
+                )
+            )
+        )
     }
 }
 
-// Single App Slot inside iOS Box
+// Single App Slot inside iOS Box (No text label, clean iOS squircle)
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MiniAppSlot(
     app: AppItem,
     badgeCount: Int,
-    isDarkTheme: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val textColor = if (isDarkTheme) Color.White.copy(alpha = 0.90f) else Color(0xFF1E2126)
-
-    Column(
+    Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .size(52.dp)
+            .clip(RoundedCornerShape(14.dp))
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
-            )
-            .padding(2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.TopEnd) {
-            if (app.iconBitmap != null) {
-                Image(
-                    bitmap = app.iconBitmap,
-                    contentDescription = app.label,
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(14.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                AsyncImage(
-                    model = app.icon,
-                    contentDescription = app.label,
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(14.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            if (badgeCount > 0) {
-                Surface(
-                    color = Color(0xFFFF3B30),
-                    shape = CircleShape,
-                    border = BorderStroke(1.dp, Color.White),
-                    modifier = Modifier.offset(x = 4.dp, y = (-2).dp)
-                ) {
-                    Text(
-                        text = if (badgeCount > 99) "99+" else "$badgeCount",
-                        color = Color.White,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 0.5.dp)
-                    )
-                }
-            }
+        if (app.iconBitmap != null) {
+            Image(
+                bitmap = app.iconBitmap,
+                contentDescription = app.label,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(14.dp)),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            AsyncImage(
+                model = app.icon,
+                contentDescription = app.label,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(14.dp)),
+                contentScale = ContentScale.Crop
+            )
         }
 
-        Spacer(modifier = Modifier.height(3.dp))
-
-        Text(
-            text = app.label,
-            fontSize = 10.sp,
-            color = textColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
-        )
+        if (badgeCount > 0) {
+            Surface(
+                color = Color(0xFFFF3B30),
+                shape = CircleShape,
+                border = BorderStroke(1.2.dp, Color.White),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 3.dp, y = (-2).dp)
+            ) {
+                Text(
+                    text = if (badgeCount > 99) "99+" else "$badgeCount",
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 0.5.dp)
+                )
+            }
+        }
     }
 }
 
-// Mini 2x2 Cluster Folder Thumbnail inside iOS Box for remaining apps
+// Mini 2x2 Cluster Folder Thumbnail inside iOS Box (No text label, clean frosted mini-folder)
 @Composable
 private fun ClusterFolderSlot(
     apps: List<AppItem>,
-    totalRemaining: Int,
     isDarkTheme: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val textColor = if (isDarkTheme) Color.White.copy(alpha = 0.90f) else Color(0xFF1E2126)
-    val clusterBg = if (isDarkTheme) Color(0xFF282C3A).copy(alpha = 0.85f) else Color(0xFFE2E6EE).copy(alpha = 0.90f)
+    val clusterBg = Color.White.copy(alpha = if (isDarkTheme) 0.16f else 0.25f)
+    val clusterBorder = Color.White.copy(alpha = if (isDarkTheme) 0.20f else 0.40f)
 
-    Column(
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = clusterBg,
+        border = BorderStroke(0.8.dp, clusterBorder),
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .size(52.dp)
+            .clip(RoundedCornerShape(14.dp))
             .clickable { onClick() }
-            .padding(2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = clusterBg,
-            border = BorderStroke(0.8.dp, if (isDarkTheme) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.50f)),
-            modifier = Modifier.size(46.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(4.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(3.dp),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 2x2 mini icons
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceEvenly
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        if (apps.isNotEmpty()) {
-                            MiniThumb(apps[0])
-                        }
-                        if (apps.size > 1) {
-                            MiniThumb(apps[1])
-                        }
+                    if (apps.isNotEmpty()) {
+                        MiniThumb(apps[0])
+                    } else {
+                        Spacer(modifier = Modifier.size(20.dp))
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        if (apps.size > 2) {
-                            MiniThumb(apps[2])
-                        }
-                        if (apps.size > 3) {
-                            MiniThumb(apps[3])
-                        }
+                    if (apps.size > 1) {
+                        MiniThumb(apps[1])
+                    } else {
+                        Spacer(modifier = Modifier.size(20.dp))
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (apps.size > 2) {
+                        MiniThumb(apps[2])
+                    } else {
+                        Spacer(modifier = Modifier.size(20.dp))
+                    }
+                    if (apps.size > 3) {
+                        MiniThumb(apps[3])
+                    } else {
+                        Spacer(modifier = Modifier.size(20.dp))
                     }
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(3.dp))
-
-        Text(
-            text = "+$totalRemaining المزيد",
-            fontSize = 10.sp,
-            color = textColor,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
-        )
     }
 }
 
@@ -830,15 +675,19 @@ fun CategoryFolderDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val currentLang = java.util.Locale.getDefault().language
+                    val folderTitle = if (currentLang == "ar") category.titleAr else category.titleEn
+                    val subtitle = if (currentLang == "ar") "${apps.size} تطبيقات" else "${apps.size} apps"
+
                     Column {
                         Text(
-                            text = "${category.iconEmoji} ${category.titleAr}",
+                            text = "${category.iconEmoji} $folderTitle",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = titleColor
                         )
                         Text(
-                            text = "${apps.size} تطبيقات",
+                            text = subtitle,
                             fontSize = 12.sp,
                             color = titleColor.copy(alpha = 0.60f)
                         )

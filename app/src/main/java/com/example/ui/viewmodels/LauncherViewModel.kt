@@ -57,7 +57,7 @@ data class LauncherSettings(
     val showWeatherGlanceWidget: Boolean = false,
     val showIosHomeWidgets: Boolean = true,
     val iosWidgetStyle: String = "pair", // "pair" or "quad_battery"
-    val iosWidgetCity: String = "Hanoi",
+    val iosWidgetCity: String = "", // empty means auto-detect from device location/region
     val showWidgetLabels: Boolean = true,
     val showTopBarWidgets: Boolean = false,
     val widgetOrder: List<String> = listOf("battery", "music", "tasks", "shortcuts", "controls"),
@@ -151,7 +151,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             showWeatherGlanceWidget = prefs.getBoolean("show_weather_glance_widget", false),
             showIosHomeWidgets = prefs.getBoolean("show_ios_home_widgets", true),
             iosWidgetStyle = prefs.getString("ios_widget_style", "pair") ?: "pair",
-            iosWidgetCity = prefs.getString("ios_widget_city", "Hanoi") ?: "Hanoi",
+            iosWidgetCity = prefs.getString("ios_widget_city", "") ?: "",
             showWidgetLabels = prefs.getBoolean("show_widget_labels", true),
             showTopBarWidgets = prefs.getBoolean("show_top_bar_widgets", false),
             widgetOrder = prefs.getString("widget_order", null)?.split(",")?.filter { it.isNotBlank() }

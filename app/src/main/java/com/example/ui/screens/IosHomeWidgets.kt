@@ -67,6 +67,27 @@ fun IosHomeWidgetsRow(
     var batteryPercent by remember { mutableIntStateOf(85) }
     var isCharging by remember { mutableStateOf(false) }
 
+    // Live weather connected to real device location / region
+    var liveWeather by remember {
+        mutableStateOf(
+            com.example.util.LiveWeatherData(
+                city = if (settings.iosWidgetCity.isNotBlank()) settings.iosWidgetCity else com.example.util.LocationWeatherHelper.detectDeviceCity(context),
+                temperature = "24°",
+                condition = "Ensoleillé",
+                highLow = "H:26°  L:18°",
+                isSunny = true
+            )
+        )
+    }
+
+    LaunchedEffect(settings.iosWidgetCity) {
+        val weather = com.example.util.LocationWeatherHelper.fetchLiveWeather(
+            context,
+            customCity = settings.iosWidgetCity.ifBlank { null }
+        )
+        liveWeather = weather
+    }
+
     DisposableEffect(context) {
         val receiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
@@ -132,7 +153,7 @@ fun IosHomeWidgetsRow(
                     // 1. iOS Weather Square Widget (2x2)
                     Box(modifier = Modifier.weight(1f)) {
                         IosWeatherSquareWidget(
-                            city = settings.iosWidgetCity.ifBlank { "Hanoi" },
+                            weather = liveWeather,
                             showLabels = settings.showWidgetLabels,
                             onWeatherClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -166,19 +187,29 @@ fun IosHomeWidgetsRow(
  */
 @Composable
 fun IosWeatherSquareWidget(
-    city: String,
+    weather: com.example.util.LiveWeatherData,
     showLabels: Boolean,
     onWeatherClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val skyGradient = remember {
-        Brush.verticalGradient(
-            colors = listOf(
-                Color(0xFF2979FF),
-                Color(0xFF1E60D4),
-                Color(0xFF1548A6)
+    val skyGradient = remember(weather.isRainy) {
+        if (weather.isRainy) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF37474F),
+                    Color(0xFF263238),
+                    Color(0xFF1B2428)
+                )
             )
-        )
+        } else {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF2979FF),
+                    Color(0xFF1E60D4),
+                    Color(0xFF1548A6)
+                )
+            )
+        }
     }
 
     Column(
@@ -195,7 +226,7 @@ fun IosWeatherSquareWidget(
                 .clip(RoundedCornerShape(24.dp))
                 .semantics(mergeDescendants = true) {
                     role = Role.Button
-                    contentDescription = "Widget Météo $city, 28 degrés, Ensoleillé"
+                    contentDescription = "Widget Météo ${weather.city}, ${weather.temperature}, ${weather.condition}"
                 }
                 .clickable(
                     role = Role.Button,
@@ -227,7 +258,7 @@ fun IosWeatherSquareWidget(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = city,
+                            text = weather.city,
                             color = Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -244,7 +275,7 @@ fun IosWeatherSquareWidget(
 
                     // Middle: Big Temperature
                     Text(
-                        text = "28°",
+                        text = weather.temperature,
                         color = Color.White,
                         fontSize = 38.sp,
                         fontWeight = FontWeight.Light,
@@ -257,14 +288,20 @@ fun IosWeatherSquareWidget(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
+                            val weatherIcon = when {
+                                weather.isRainy -> Icons.Default.WaterDrop
+                                weather.isCloudy -> Icons.Default.Cloud
+                                else -> Icons.Default.WbSunny
+                            }
+                            val iconTint = if (weather.isSunny) Color(0xFFFFD54F) else Color.White
                             Icon(
-                                imageVector = Icons.Default.WbSunny,
-                                contentDescription = "Ensoleillé",
-                                tint = Color(0xFFFFD54F),
+                                imageVector = weatherIcon,
+                                contentDescription = weather.condition,
+                                tint = iconTint,
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                text = "Mostly Sunny",
+                                text = weather.condition,
                                 color = Color.White,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
@@ -273,7 +310,7 @@ fun IosWeatherSquareWidget(
                         }
 
                         Text(
-                            text = "H:29°  L:19°",
+                            text = weather.highLow,
                             color = Color.White.copy(alpha = 0.85f),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Normal
