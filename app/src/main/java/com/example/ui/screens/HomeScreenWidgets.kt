@@ -684,27 +684,61 @@ fun AppShortcutsCard(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(46.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(iconBoxBg)
+                                .size(48.dp)
+                                .shadow(
+                                    elevation = 6.dp,
+                                    shape = RoundedCornerShape(16.dp),
+                                    spotColor = Color.White.copy(alpha = 0.35f)
+                                )
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = if (isDark) 0.28f else 0.40f),
+                                            Color.White.copy(alpha = if (isDark) 0.10f else 0.16f)
+                                        )
+                                    )
+                                )
                                 .border(
-                                    width = 1.dp,
-                                    color = iconBoxBorder,
-                                    shape = RoundedCornerShape(14.dp)
+                                    width = 1.2.dp,
+                                    brush = Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.70f),
+                                            Color.White.copy(alpha = 0.20f)
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(16.dp)
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
+                            // Specular glass light sheen across top edge
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = 0.35f),
+                                                Color.Transparent
+                                            )
+                                        )
+                                    )
+                            )
                             if (app.iconBitmap != null) {
                                 Image(
                                     bitmap = app.iconBitmap,
                                     contentDescription = app.label,
-                                    modifier = Modifier.size(34.dp)
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(RoundedCornerShape(10.dp))
                                 )
                             } else {
                                 AsyncImage(
                                     model = app.icon,
                                     contentDescription = app.label,
-                                    modifier = Modifier.size(34.dp)
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(RoundedCornerShape(10.dp))
                                 )
                             }
                         }

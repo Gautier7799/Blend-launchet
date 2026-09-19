@@ -120,10 +120,10 @@ fun AppDrawer(
 
     val isDarkTheme = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
 
-    // Frosted Glass styling matching iOS App Library
-    val drawerBgColor = Color.Black.copy(alpha = 0.20f)
-    val drawerBorderColor = Color.White.copy(alpha = 0.18f)
-    val handleColor = Color.White.copy(alpha = 0.45f)
+    // Frosted Glass styling matching iOS App Library with high opacity to hide wallpaper/widgets completely
+    val drawerBgColor = if (isDarkTheme) Color(0xFF0C0E15).copy(alpha = 0.96f) else Color(0xFF141720).copy(alpha = 0.95f)
+    val drawerBorderColor = Color.White.copy(alpha = 0.25f)
+    val handleColor = Color.White.copy(alpha = 0.50f)
     val pillBgColor = Color.White.copy(alpha = 0.20f)
     val pillBorderColor = Color.White.copy(alpha = 0.35f)
     val iconTint = Color.White.copy(alpha = 0.85f)
@@ -139,8 +139,8 @@ fun AppDrawer(
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)),
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         color = drawerBgColor,
-        border = BorderStroke(1.dp, drawerBorderColor),
-        shadowElevation = 0.dp
+        border = BorderStroke(1.2.dp, drawerBorderColor),
+        shadowElevation = 24.dp
     ) {
         Column(
             modifier = Modifier
@@ -481,7 +481,7 @@ fun IosCategoryBox(
     }
 }
 
-// Single App Slot inside iOS Box (No text label, clean iOS squircle)
+// Single App Slot inside iOS Box (No text label, clean iOS squircle with glass styling)
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MiniAppSlot(
@@ -493,21 +493,57 @@ private fun MiniAppSlot(
 ) {
     Box(
         modifier = modifier
-            .size(52.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .size(54.dp)
+            .shadow(
+                elevation = 4.dp,
+                shape = RoundedCornerShape(16.dp),
+                spotColor = Color.White.copy(alpha = 0.25f)
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.25f),
+                        Color.White.copy(alpha = 0.08f)
+                    )
+                )
+            )
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.60f),
+                        Color.White.copy(alpha = 0.16f)
+                    )
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
         contentAlignment = Alignment.Center
     ) {
+        // Specular glass shine
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.30f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
         if (app.iconBitmap != null) {
             Image(
                 bitmap = app.iconBitmap,
                 contentDescription = app.label,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(14.dp)),
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(11.dp)),
                 contentScale = ContentScale.Crop
             )
         } else {
@@ -515,8 +551,8 @@ private fun MiniAppSlot(
                 model = app.icon,
                 contentDescription = app.label,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(14.dp)),
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(11.dp)),
                 contentScale = ContentScale.Crop
             )
         }

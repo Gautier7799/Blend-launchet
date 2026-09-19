@@ -56,6 +56,8 @@ data class LauncherSettings(
     val showQuickControlsWidget: Boolean = true,
     val showWeatherGlanceWidget: Boolean = false,
     val showIosHomeWidgets: Boolean = true,
+    val widgetPlacement: String = "secondary", // "secondary" (الواجهة الثانوية), "home" (الرئيسية), "both" (كلاهما)
+    val glassIcons: Boolean = true, // كل الأيقونات زجاج مع blur
     val iosWidgetStyle: String = "pair", // "pair" or "quad_battery"
     val iosWidgetCity: String = "", // empty means auto-detect from device location/region
     val showWidgetLabels: Boolean = true,
@@ -151,6 +153,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             showQuickControlsWidget = prefs.getBoolean("show_quick_controls_widget", true),
             showWeatherGlanceWidget = prefs.getBoolean("show_weather_glance_widget", false),
             showIosHomeWidgets = prefs.getBoolean("show_ios_home_widgets", true),
+            widgetPlacement = prefs.getString("widget_placement", "secondary") ?: "secondary",
+            glassIcons = prefs.getBoolean("glass_icons", true),
             iosWidgetStyle = prefs.getString("ios_widget_style", "pair") ?: "pair",
             iosWidgetCity = prefs.getString("ios_widget_city", "") ?: "",
             showWidgetLabels = prefs.getBoolean("show_widget_labels", true),
@@ -239,6 +243,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putBoolean("show_quick_controls_widget", newSettings.showQuickControlsWidget)
             .putBoolean("show_weather_glance_widget", newSettings.showWeatherGlanceWidget)
             .putBoolean("show_ios_home_widgets", newSettings.showIosHomeWidgets)
+            .putString("widget_placement", newSettings.widgetPlacement)
+            .putBoolean("glass_icons", newSettings.glassIcons)
             .putString("ios_widget_style", newSettings.iosWidgetStyle)
             .putString("ios_widget_city", newSettings.iosWidgetCity)
             .putBoolean("show_widget_labels", newSettings.showWidgetLabels)

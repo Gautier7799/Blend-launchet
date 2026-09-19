@@ -234,6 +234,20 @@ fun LauncherSettingsBottomSheet(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
 
+                    // Glassmorphism Icons Toggle ("كل الايقونات زجاج مع blur")
+                    SettingsSwitchRow(
+                        icon = Icons.Default.AutoAwesome,
+                        title = "أيقونات زجاجية (Glass Icons)",
+                        subtitle = "تأثير زجاجي ثلاثي الأبعاد مع انعكاسات ضوئية على كل الأيقونات",
+                        checked = settings.glassIcons,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(glassIcons = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
                     // Show Labels Toggle
                     SettingsSwitchRow(
                         icon = Icons.Default.Edit,
@@ -412,6 +426,41 @@ fun LauncherSettingsBottomSheet(
                                 },
                                 modifier = Modifier.weight(1f)
                             )
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+
+                        Text(
+                            text = "موضع الـ Widget (Widget Placement)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf(
+                                Triple("secondary", "الواجهة الثانوية", Icons.Default.Dashboard),
+                                Triple("home", "الرئيسية", Icons.Default.Home),
+                                Triple("both", "كلاهما", Icons.Default.Layers)
+                            ).forEach { (mode, label, icon) ->
+                                val isSelected = settings.widgetPlacement == mode
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { viewModel.updateSettings(settings.copy(widgetPlacement = mode)) },
+                                    label = { Text(label, fontSize = 11.sp) },
+                                    leadingIcon = {
+                                        Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
 
                         HorizontalDivider(

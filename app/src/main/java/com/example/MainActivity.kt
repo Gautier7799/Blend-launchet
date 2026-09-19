@@ -56,6 +56,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -330,7 +331,9 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
         // --- Horizontal Pager: Page 0 = Secondary Dashboard, Page 1 = Main Home Screen ---
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (isDrawerOpen) Modifier.blur(32.dp) else Modifier)
         ) { page ->
             if (page == 0) {
                 // Secondary Dashboard (Minus-One Screen with Google News, Smart Firestore Search, Widgets)
@@ -346,9 +349,16 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                     onAiClick = { isAiAssistantOpen = true },
                     onSettingsClick = { isSettingsOpen = true },
                     onReorderWidget = { from, to -> viewModel.reorderWidgets(from, to) },
-                    onDeleteWidget = { widgetKey -> viewModel.deleteWidget(widgetKey) },
+                    onDeleteWidget = { widgetKey ->
+                        if (widgetKey == "ios_home_widgets") {
+                            viewModel.updateSettings(settings.copy(showIosHomeWidgets = false))
+                        } else {
+                            viewModel.deleteWidget(widgetKey)
+                        }
+                    },
                     onOpenManageWidgets = { isManageWidgetsOpen = true },
-                    onResetWidgets = { viewModel.resetWidgetsToDefault() }
+                    onResetWidgets = { viewModel.resetWidgetsToDefault() },
+                    onUpdateSettings = { viewModel.updateSettings(it) }
                 )
             } else {
                 // Main Home Screen Content
@@ -397,7 +407,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                         }
 
                         // iOS 17 Home Screen Widgets (Weather + Battery pair or Quad Multi-Device Battery)
-                        if (settings.showIosHomeWidgets) {
+                        if (settings.showIosHomeWidgets && (settings.widgetPlacement == "home" || settings.widgetPlacement == "both")) {
                             // Extra top spacer to lower the widget away from status bar as requested ("انزل قليلا widget")
                             Spacer(modifier = Modifier.height(settings.widgetTopSpacingDp.dp))
                             IosHomeWidgetsRow(
@@ -450,6 +460,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                         showTextShadows = settings.showTextShadows,
                         iconSize = settings.iconSizeDp.dp,
                         themedIcon = settings.themedIcons,
+                        glassIcon = settings.glassIcons,
                         onClick = {
                             if (!isReorderingMode) {
                                 viewModel.launchApp(app.packageName)
@@ -674,6 +685,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             wobbleAngle = wobbleAngle,
                             iconSize = (settings.iconSizeDp - 6).dp,
                             themedIcon = settings.themedIcons,
+                            glassIcon = settings.glassIcons,
                             onClick = { 
                                 if (!isReorderingMode) {
                                     viewModel.launchApp(app.packageName)
@@ -758,7 +770,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             }
         }
 
-        // --- Android: Dimmed Backdrop Scrim with Blur for App Drawer ---
+        // --- Android: Heavy Dimmed Frosted Scrim for App Drawer ---
         AnimatedVisibility(
             visible = isDrawerOpen,
             enter = fadeIn(animationSpec = tween(220)),
@@ -767,8 +779,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(20.dp)
-                    .background(Color.Black.copy(alpha = 0.45f))
+                    .blur(28.dp)
+                    .background(Color.Black.copy(alpha = 0.85f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -1007,6 +1019,78 @@ fun AppIconItem(
     }
 }
 
+/**
+ * Frosted Glass Squircle Icon Container with specular sheen, blur effect and soft glow
+ */
+@Composable
+fun GlassIconSquircle(
+    iconSize: Dp,
+    modifier: Modifier = Modifier,
+    isGlass: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    if (!isGlass) {
+        Box(
+            modifier = modifier.size(iconSize),
+            contentAlignment = Alignment.Center
+        ) {
+            content()
+        }
+    } else {
+        val cornerRadius = (iconSize * 0.28f).coerceAtLeast(14.dp)
+        Box(
+            modifier = modifier
+                .size(iconSize)
+                .shadow(
+                    elevation = 6.dp,
+                    shape = RoundedCornerShape(cornerRadius),
+                    spotColor = Color.White.copy(alpha = 0.35f),
+                    ambientColor = Color.Black.copy(alpha = 0.20f)
+                )
+                .clip(RoundedCornerShape(cornerRadius))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.30f),
+                            Color.White.copy(alpha = 0.10f)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.2.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.75f),
+                            Color.White.copy(alpha = 0.20f)
+                        )
+                    ),
+                    shape = RoundedCornerShape(cornerRadius)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Diagonal specular glass highlight
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.36f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier.size(iconSize * 0.78f),
+                contentAlignment = Alignment.Center
+            ) {
+                content()
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ReorderableHomeAppItem(
@@ -1020,6 +1104,7 @@ fun ReorderableHomeAppItem(
     showTextShadows: Boolean = false,
     iconSize: Dp,
     themedIcon: Boolean,
+    glassIcon: Boolean = true,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onMoveLeft: () -> Unit,
@@ -1113,26 +1198,31 @@ fun ReorderableHomeAppItem(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(contentAlignment = Alignment.TopEnd) {
-                if (app.iconBitmap != null) {
-                    Image(
-                        bitmap = app.iconBitmap,
-                        contentDescription = app.label,
-                        colorFilter = themedColorFilter,
-                        modifier = Modifier
-                            .size(iconSize)
-                            .clip(RoundedCornerShape(18.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    AsyncImage(
-                        model = app.icon,
-                        contentDescription = app.label,
-                        colorFilter = themedColorFilter,
-                        modifier = Modifier
-                            .size(iconSize)
-                            .clip(RoundedCornerShape(18.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+                GlassIconSquircle(
+                    iconSize = iconSize,
+                    isGlass = glassIcon
+                ) {
+                    if (app.iconBitmap != null) {
+                        Image(
+                            bitmap = app.iconBitmap,
+                            contentDescription = app.label,
+                            colorFilter = themedColorFilter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(if (glassIcon) 13.dp else 18.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        AsyncImage(
+                            model = app.icon,
+                            contentDescription = app.label,
+                            colorFilter = themedColorFilter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(if (glassIcon) 13.dp else 18.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
 
                 if (badgeCount > 0) {
@@ -1190,6 +1280,7 @@ fun ReorderableDockAppItem(
     wobbleAngle: Float,
     iconSize: Dp,
     themedIcon: Boolean,
+    glassIcon: Boolean = true,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onMoveLeft: () -> Unit,
@@ -1283,26 +1374,31 @@ fun ReorderableDockAppItem(
             verticalArrangement = Arrangement.Center
         ) {
             Box(contentAlignment = Alignment.TopEnd) {
-                if (app.iconBitmap != null) {
-                    Image(
-                        bitmap = app.iconBitmap,
-                        contentDescription = app.label,
-                        colorFilter = themedColorFilter,
-                        modifier = Modifier
-                            .size(iconSize)
-                            .clip(RoundedCornerShape(18.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    AsyncImage(
-                        model = app.icon,
-                        contentDescription = app.label,
-                        colorFilter = themedColorFilter,
-                        modifier = Modifier
-                            .size(iconSize)
-                            .clip(RoundedCornerShape(18.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+                GlassIconSquircle(
+                    iconSize = iconSize,
+                    isGlass = glassIcon
+                ) {
+                    if (app.iconBitmap != null) {
+                        Image(
+                            bitmap = app.iconBitmap,
+                            contentDescription = app.label,
+                            colorFilter = themedColorFilter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(if (glassIcon) 13.dp else 18.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        AsyncImage(
+                            model = app.icon,
+                            contentDescription = app.label,
+                            colorFilter = themedColorFilter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(if (glassIcon) 13.dp else 18.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
 
                 if (badgeCount > 0) {

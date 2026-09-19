@@ -60,6 +60,7 @@ fun MinusOneScreen(
     onDeleteWidget: (widgetKey: String) -> Unit = {},
     onOpenManageWidgets: () -> Unit = {},
     onResetWidgets: () -> Unit = {},
+    onUpdateSettings: (LauncherSettings) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -332,6 +333,30 @@ fun MinusOneScreen(
                         }
                     }
                 }
+            }
+        }
+
+        // 1.5. iOS 17 Pair / Quad Battery Widgets (Weather 29° + Battery Ring) in Secondary Screen
+        if (settings.showIosHomeWidgets && (settings.widgetPlacement == "secondary" || settings.widgetPlacement == "both")) {
+            item(key = "ios_home_widgets_row") {
+                IosHomeWidgetsRow(
+                    settings = settings,
+                    onOpenSettings = onSettingsClick,
+                    isEditMode = isEditMode,
+                    onToggleEditMode = { isEditMode = !isEditMode },
+                    onDeleteWidget = { onDeleteWidget("ios_home_widgets") },
+                    onToggleStyle = {
+                        val nextStyle = if (settings.iosWidgetStyle == "pair") "quad_battery" else "pair"
+                        onUpdateSettings(settings.copy(iosWidgetStyle = nextStyle))
+                    },
+                    onLowerWidget = {
+                        onUpdateSettings(settings.copy(widgetTopSpacingDp = (settings.widgetTopSpacingDp + 8).coerceIn(8, 70)))
+                    },
+                    onRaiseWidget = {
+                        onUpdateSettings(settings.copy(widgetTopSpacingDp = (settings.widgetTopSpacingDp - 8).coerceIn(8, 70)))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
 
