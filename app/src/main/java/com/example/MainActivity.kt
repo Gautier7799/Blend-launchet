@@ -89,6 +89,7 @@ import com.example.ui.screens.AiAssistantBottomSheet
 import com.example.ui.screens.AppActionBottomSheet
 import com.example.ui.screens.AppShortcutsCard
 import com.example.ui.screens.DeviceBatteryCard
+import com.example.ui.screens.IosHomeWidgetsRow
 import com.example.ui.screens.LauncherSettingsBottomSheet
 import com.example.ui.screens.ManageHomeWidgetsBottomSheet
 import com.example.ui.screens.MinusOneScreen
@@ -347,14 +348,25 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             end = 16.dp
                         )
                 ) {
-                    // Top Widgets Row (AI Assistant, Date, Weather, Battery, Clock - customizable from Settings)
+                    // Top Widgets Area (iOS 17 Widgets & optional classic TopWidgetsBar)
                     if (!isReorderingMode) {
-                        TopWidgetsBar(
-                            settings = settings,
-                            onAiClick = { isAiAssistantOpen = true },
-                            onSettingsClick = { isSettingsOpen = true }
-                        )
-                        Spacer(modifier = Modifier.height(14.dp))
+                        if (settings.showTopBarWidgets) {
+                            TopWidgetsBar(
+                                settings = settings,
+                                onAiClick = { isAiAssistantOpen = true },
+                                onSettingsClick = { isSettingsOpen = true }
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
+
+                        // iOS 17 Home Screen Widgets (Weather + Battery pair or Quad Multi-Device Battery)
+                        if (settings.showIosHomeWidgets) {
+                            IosHomeWidgetsRow(
+                                settings = settings,
+                                onOpenSettings = { isSettingsOpen = true }
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
                     }
 
                     // Home Screen Grid with dynamic reordering (strict boundary to guarantee no overlap with dock)

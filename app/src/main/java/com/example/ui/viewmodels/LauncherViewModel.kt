@@ -55,6 +55,11 @@ data class LauncherSettings(
     val showAppShortcutsWidget: Boolean = true,
     val showQuickControlsWidget: Boolean = true,
     val showWeatherGlanceWidget: Boolean = false,
+    val showIosHomeWidgets: Boolean = true,
+    val iosWidgetStyle: String = "pair", // "pair" or "quad_battery"
+    val iosWidgetCity: String = "Hanoi",
+    val showWidgetLabels: Boolean = true,
+    val showTopBarWidgets: Boolean = false,
     val widgetOrder: List<String> = listOf("battery", "music", "tasks", "shortcuts", "controls"),
     val wallpaperType: String = "emerald", // "system", "emerald", "dark_amoled", "twilight", "ocean", "glass", "custom"
     val customWallpaperUri: String? = null,
@@ -144,6 +149,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             showAppShortcutsWidget = prefs.getBoolean("show_app_shortcuts_widget", true),
             showQuickControlsWidget = prefs.getBoolean("show_quick_controls_widget", true),
             showWeatherGlanceWidget = prefs.getBoolean("show_weather_glance_widget", false),
+            showIosHomeWidgets = prefs.getBoolean("show_ios_home_widgets", true),
+            iosWidgetStyle = prefs.getString("ios_widget_style", "pair") ?: "pair",
+            iosWidgetCity = prefs.getString("ios_widget_city", "Hanoi") ?: "Hanoi",
+            showWidgetLabels = prefs.getBoolean("show_widget_labels", true),
+            showTopBarWidgets = prefs.getBoolean("show_top_bar_widgets", false),
             widgetOrder = prefs.getString("widget_order", null)?.split(",")?.filter { it.isNotBlank() }
                 ?: listOf("battery", "music", "tasks", "shortcuts", "controls"),
             wallpaperType = prefs.getString("wallpaper_type", "emerald") ?: "emerald",
@@ -226,6 +236,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putBoolean("show_app_shortcuts_widget", newSettings.showAppShortcutsWidget)
             .putBoolean("show_quick_controls_widget", newSettings.showQuickControlsWidget)
             .putBoolean("show_weather_glance_widget", newSettings.showWeatherGlanceWidget)
+            .putBoolean("show_ios_home_widgets", newSettings.showIosHomeWidgets)
+            .putString("ios_widget_style", newSettings.iosWidgetStyle)
+            .putString("ios_widget_city", newSettings.iosWidgetCity)
+            .putBoolean("show_widget_labels", newSettings.showWidgetLabels)
+            .putBoolean("show_top_bar_widgets", newSettings.showTopBarWidgets)
             .putString("widget_order", newSettings.widgetOrder.joinToString(","))
             .putString("wallpaper_type", newSettings.wallpaperType)
             .putString("custom_wallpaper_uri", newSettings.customWallpaperUri)

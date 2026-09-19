@@ -350,8 +350,103 @@ fun LauncherSettingsBottomSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
+            // Section 2.5: Widgets iOS 17 (Style Apple)
+            SettingsSectionTitle(title = "Widgets iOS 17 (Style Apple)")
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Widgets,
+                        title = "Widgets iOS sur l'écran d'accueil",
+                        subtitle = "Affiche les widgets iOS en haut de l'écran d'accueil",
+                        checked = settings.showIosHomeWidgets,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showIosHomeWidgets = it)) }
+                    )
+
+                    if (settings.showIosHomeWidgets) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+
+                        Text(
+                            text = "Style de widget iOS",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = settings.iosWidgetStyle == "pair",
+                                onClick = { viewModel.updateSettings(settings.copy(iosWidgetStyle = "pair")) },
+                                label = { Text("Météo + Batterie (2x2)") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.WbSunny,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            FilterChip(
+                                selected = settings.iosWidgetStyle == "quad_battery",
+                                onClick = { viewModel.updateSettings(settings.copy(iosWidgetStyle = "quad_battery")) },
+                                label = { Text("Batterie 4 Appareils") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.BatteryChargingFull,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+
+                        SettingsSwitchRow(
+                            icon = Icons.Default.Label,
+                            title = "Afficher les étiquettes",
+                            subtitle = "Affiche 'Weather' et 'Battery' sous les widgets",
+                            checked = settings.showWidgetLabels,
+                            onCheckedChange = { viewModel.updateSettings(settings.copy(showWidgetLabels = it)) }
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+
+                        SettingsSwitchRow(
+                            icon = Icons.Default.ViewAgenda,
+                            title = "Barre d'outils classique en haut",
+                            subtitle = "Affiche aussi la barre classique au-dessus des widgets",
+                            checked = settings.showTopBarWidgets,
+                            onCheckedChange = { viewModel.updateSettings(settings.copy(showTopBarWidgets = it)) }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
             // Section 3: Widgets de l'écran d'accueil
-            SettingsSectionTitle(title = "Widgets de l'écran d'accueil")
+            SettingsSectionTitle(title = "Widgets du tableau de bord (-1)")
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),

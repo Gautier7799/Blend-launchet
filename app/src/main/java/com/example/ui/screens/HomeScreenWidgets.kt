@@ -1390,6 +1390,67 @@ fun ManageHomeWidgetsBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Section Widgets iOS 17 Écran d'accueil
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    WidgetToggleRow(
+                        title = "Widgets iOS 17 sur l'écran d'accueil",
+                        subtitle = "Afficher les widgets météo et batterie sur l'écran principal",
+                        checked = settings.showIosHomeWidgets,
+                        onCheckedChange = {
+                            onUpdateSettings(settings.copy(showIosHomeWidgets = it))
+                        }
+                    )
+
+                    if (settings.showIosHomeWidgets) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                        Text(
+                            text = "Format des widgets",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = settings.iosWidgetStyle == "pair",
+                                onClick = { onUpdateSettings(settings.copy(iosWidgetStyle = "pair")) },
+                                label = { Text("Météo + Batterie") },
+                                modifier = Modifier.weight(1f)
+                            )
+                            FilterChip(
+                                selected = settings.iosWidgetStyle == "quad_battery",
+                                onClick = { onUpdateSettings(settings.copy(iosWidgetStyle = "quad_battery")) },
+                                label = { Text("Batterie 4 Appareils") },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                        WidgetToggleRow(
+                            title = "Étiquettes 'Weather' et 'Battery'",
+                            subtitle = "Afficher les textes descriptifs sous les widgets",
+                            checked = settings.showWidgetLabels,
+                            onCheckedChange = {
+                                onUpdateSettings(settings.copy(showWidgetLabels = it))
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                 shape = RoundedCornerShape(20.dp),
