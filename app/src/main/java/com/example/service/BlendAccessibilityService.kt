@@ -40,6 +40,38 @@ class BlendAccessibilityService : AccessibilityService() {
             }
         }
 
+        fun expandNotificationPanel(context: Context): Boolean {
+            // Priority 1: Instant smooth system action via accessibility service
+            val accessibilitySuccess = instance?.performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS) ?: false
+            if (accessibilitySuccess) return true
+
+            // Priority 2: Direct StatusBarManager reflection fallback
+            return try {
+                val sbservice = context.getSystemService("statusbar")
+                val statusbarManager = Class.forName("android.app.StatusBarManager")
+                val showsb = statusbarManager.getMethod("expandNotificationsPanel")
+                showsb.invoke(sbservice)
+                true
+            } catch (_: Exception) {
+                try {
+                    val statusbarManager = Class.forName("android.app.StatusBarManager")
+                    val showsb = statusbarManager.getMethod("expand")
+                    showsb.invoke(context.getSystemService("statusbar"))
+                    true
+                } catch (_: Exception) {
+                    false
+                }
+            }
+        }
+
+        fun openQuickSettings(): Boolean {
+            return instance?.performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS) ?: false
+        }
+
+        fun openRecentApps(): Boolean {
+            return instance?.performGlobalAction(GLOBAL_ACTION_RECENTS) ?: false
+        }
+
         fun openAccessibilitySettings(context: Context) {
             try {
                 val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {

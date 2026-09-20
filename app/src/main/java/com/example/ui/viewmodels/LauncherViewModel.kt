@@ -55,6 +55,7 @@ data class LauncherSettings(
     val showAppShortcutsWidget: Boolean = true,
     val showQuickControlsWidget: Boolean = true,
     val showWeatherGlanceWidget: Boolean = false,
+    val showNotificationsWidget: Boolean = true,
     val showIosHomeWidgets: Boolean = true,
     val widgetPlacement: String = "both", // "secondary" (الواجهة الثانوية), "home" (الرئيسية), "both" (كلاهما)
     val glassIcons: Boolean = true, // كل الأيقونات زجاج مع blur
@@ -63,7 +64,7 @@ data class LauncherSettings(
     val showWidgetLabels: Boolean = false,
     val showTopBarWidgets: Boolean = false,
     val widgetTopSpacingDp: Int = 0, // Widgets rise directly to top under status bar
-    val widgetOrder: List<String> = listOf("battery", "music", "tasks", "shortcuts", "controls"),
+    val widgetOrder: List<String> = listOf("notifications", "battery", "music", "tasks", "shortcuts", "controls"),
     val wallpaperType: String = "emerald", // "system", "emerald", "dark_amoled", "twilight", "ocean", "glass", "custom"
     val customWallpaperUri: String? = null,
     val wallpaperDim: Float = 0.15f
@@ -152,6 +153,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             showAppShortcutsWidget = prefs.getBoolean("show_app_shortcuts_widget", true),
             showQuickControlsWidget = prefs.getBoolean("show_quick_controls_widget", true),
             showWeatherGlanceWidget = prefs.getBoolean("show_weather_glance_widget", false),
+            showNotificationsWidget = prefs.getBoolean("show_notifications_widget", true),
             showIosHomeWidgets = prefs.getBoolean("show_ios_home_widgets", true),
             widgetPlacement = prefs.getString("widget_placement", "both") ?: "both",
             glassIcons = prefs.getBoolean("glass_icons", true),
@@ -161,7 +163,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             showTopBarWidgets = false,
             widgetTopSpacingDp = prefs.getInt("widget_top_spacing", 0),
             widgetOrder = prefs.getString("widget_order", null)?.split(",")?.filter { it.isNotBlank() }
-                ?: listOf("battery", "music", "tasks", "shortcuts", "controls"),
+                ?: listOf("notifications", "battery", "music", "tasks", "shortcuts", "controls"),
             wallpaperType = prefs.getString("wallpaper_type", "emerald") ?: "emerald",
             customWallpaperUri = prefs.getString("custom_wallpaper_uri", null),
             wallpaperDim = prefs.getFloat("wallpaper_dim", 0.15f)
@@ -242,6 +244,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putBoolean("show_app_shortcuts_widget", newSettings.showAppShortcutsWidget)
             .putBoolean("show_quick_controls_widget", newSettings.showQuickControlsWidget)
             .putBoolean("show_weather_glance_widget", newSettings.showWeatherGlanceWidget)
+            .putBoolean("show_notifications_widget", newSettings.showNotificationsWidget)
             .putBoolean("show_ios_home_widgets", newSettings.showIosHomeWidgets)
             .putString("widget_placement", newSettings.widgetPlacement)
             .putBoolean("glass_icons", newSettings.glassIcons)
@@ -279,6 +282,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun deleteWidget(widgetKey: String) {
         val currentOrder = _settings.value.widgetOrder.filter { it != widgetKey }
         val newSettings = when (widgetKey) {
+            "notifications" -> _settings.value.copy(showNotificationsWidget = false, widgetOrder = currentOrder)
             "battery" -> _settings.value.copy(showDeviceCardWidget = false, widgetOrder = currentOrder)
             "music" -> _settings.value.copy(showMusicWidget = false, widgetOrder = currentOrder)
             "tasks" -> _settings.value.copy(showTasksWidget = false, widgetOrder = currentOrder)
@@ -296,6 +300,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             currentOrder.add(widgetKey)
         }
         val newSettings = when (widgetKey) {
+            "notifications" -> _settings.value.copy(showNotificationsWidget = true, widgetOrder = currentOrder)
             "battery" -> _settings.value.copy(showDeviceCardWidget = true, widgetOrder = currentOrder)
             "music" -> _settings.value.copy(showMusicWidget = true, widgetOrder = currentOrder)
             "tasks" -> _settings.value.copy(showTasksWidget = true, widgetOrder = currentOrder)
@@ -308,9 +313,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun resetWidgetsToDefault() {
-        val defaultOrder = listOf("battery", "music", "tasks", "shortcuts", "controls")
+        val defaultOrder = listOf("notifications", "battery", "music", "tasks", "shortcuts", "controls")
         updateSettings(
             _settings.value.copy(
+                showNotificationsWidget = true,
                 showDeviceCardWidget = true,
                 showMusicWidget = true,
                 showTasksWidget = true,
@@ -488,6 +494,21 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     val notificationCounts: StateFlow<Map<String, Int>> = BlendNotificationListenerService.notificationCounts
+
+    val activeNotifications: StateFlow<List<com.example.service.ActiveNotificationModel>> =
+        BlendNotificationListenerService.activeNotificationsList
+
+    fun dismissNotification(key: String) {
+        BlendNotificationListenerService.cancelNotificationByKey(key)
+    }
+
+    fun dismissAllNotifications() {
+        BlendNotificationListenerService.cancelAllActiveNotifications()
+    }
+
+    fun expandNotificationPanel(context: Context): Boolean {
+        return BlendAccessibilityService.expandNotificationPanel(context)
+    }
 
     fun isDefaultLauncher(context: Context): Boolean = SystemPermissionsHelper.isDefaultLauncher(context)
 

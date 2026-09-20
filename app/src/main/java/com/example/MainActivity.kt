@@ -182,6 +182,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     val dockAppPackages by viewModel.dockAppPackages.collectAsState()
     val tasks by viewModel.tasks.collectAsState()
     val notificationCounts by viewModel.notificationCounts.collectAsState()
+    val activeNotifications by viewModel.activeNotifications.collectAsState()
 
     var isDrawerOpen by remember { mutableStateOf(false) }
     var isSettingsOpen by remember { mutableStateOf(false) }
@@ -381,6 +382,11 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             onDragEnd = {
                                 if (accumulatedDrag < -25f) {
                                     isDrawerOpen = true
+                                } else if (accumulatedDrag > 35f && !isDrawerOpen) {
+                                    if (settings.hapticFeedback) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                    viewModel.expandNotificationPanel(context)
                                 }
                                 accumulatedDrag = 0f
                             },
@@ -390,6 +396,13 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                                 if (accumulatedDrag < -30f) {
                                     change.consume()
                                     isDrawerOpen = true
+                                } else if (accumulatedDrag > 45f && !isDrawerOpen) {
+                                    change.consume()
+                                    if (settings.hapticFeedback) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                    viewModel.expandNotificationPanel(context)
+                                    accumulatedDrag = 0f
                                 } else if (accumulatedDrag > 30f && isDrawerOpen) {
                                     change.consume()
                                     isDrawerOpen = false
@@ -411,6 +424,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                     settings = settings,
                     tasks = tasks,
                     apps = apps,
+                    activeNotifications = activeNotifications,
                     onAddTask = { viewModel.addTask(it) },
                     onToggleTask = { viewModel.toggleTask(it) },
                     onDeleteTask = { viewModel.deleteTask(it) },
@@ -418,6 +432,10 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                     onOpenDrawer = { isDrawerOpen = true },
                     onAiClick = { isAiAssistantOpen = true },
                     onSettingsClick = { isSettingsOpen = true },
+                    onDismissNotification = { viewModel.dismissNotification(it) },
+                    onDismissAllNotifications = { viewModel.dismissAllNotifications() },
+                    onOpenNotificationSettings = { viewModel.openNotificationAccessSettings(context) },
+                    onExpandNotificationShade = { viewModel.expandNotificationPanel(context) },
                     onReorderWidget = { from, to -> viewModel.reorderWidgets(from, to) },
                     onDeleteWidget = { widgetKey ->
                         if (widgetKey == "ios_home_widgets") {

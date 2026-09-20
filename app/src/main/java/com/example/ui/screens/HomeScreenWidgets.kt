@@ -66,8 +66,11 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import coil.compose.AsyncImage
 import com.example.domain.AppItem
+import com.example.service.ActiveNotificationModel
+import com.example.service.BlendNotificationListenerService
 import com.example.ui.viewmodels.LauncherSettings
 import com.example.ui.viewmodels.LauncherTask
+import androidx.compose.ui.text.style.TextAlign
 
 /**
  * 1. Device & Battery Widget Card (Pixel 8 Style)
@@ -1492,6 +1495,20 @@ fun ManageHomeWidgetsBottomSheet(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     WidgetToggleRow(
+                        title = "Centre de Notifications & Activités (iOS)",
+                        subtitle = "Affiche les dernières notifications reçues avec actions directes",
+                        checked = settings.showNotificationsWidget,
+                        onCheckedChange = {
+                            val newOrder = if (it && !settings.widgetOrder.contains("notifications")) {
+                                listOf("notifications") + settings.widgetOrder
+                            } else settings.widgetOrder
+                            onUpdateSettings(settings.copy(showNotificationsWidget = it, widgetOrder = newOrder))
+                        }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                    WidgetToggleRow(
                         title = "Centre de contrôle iOS 27",
                         subtitle = "Raccourcis lampe torche, audio, Wi-Fi et Bluetooth",
                         checked = settings.showQuickControlsWidget,
@@ -1618,5 +1635,319 @@ private fun WidgetToggleRow(
             checked = checked,
             onCheckedChange = onCheckedChange
         )
+    }
+}
+
+private fun formatTimeAgo(postTime: Long): String {
+    val diff = System.currentTimeMillis() - postTime
+    val minutes = diff / (1000 * 60)
+    return when {
+        minutes < 1 -> "À l'instant"
+        minutes < 60 -> "Il y a ${minutes}m"
+        else -> {
+            val hours = minutes / 60
+            if (hours < 24) "Il y a ${hours}h" else "Hier"
+        }
+    }
+}
+
+/**
+ * 7. Notifications Center Widget Card (iOS 17/18 Style)
+ */
+@Composable
+fun NotificationsCenterCard(
+    notifications: List<ActiveNotificationModel>,
+    onDismiss: (String) -> Unit,
+    onDismissAll: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onExpandShade: () -> Unit,
+    onAppClick: (String) -> Unit,
+    settings: LauncherSettings,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    val isDark = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
+    val isPermissionGranted = remember { BlendNotificationListenerService.isNotificationAccessGranted(context) }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .border(
+                1.dp,
+                if (isDark) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.60f),
+                RoundedCornerShape(26.dp)
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDark) Color(0xFF1E222B).copy(alpha = 0.82f)
+            else Color.White.copy(alpha = 0.85f)
+        ),
+        shape = RoundedCornerShape(26.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(Color(0xFFFF3B30), Color(0xFFFF9500))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Centre de Notifications",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color.White else Color(0xFF1C1C1E)
+                        )
+                        Text(
+                            text = if (notifications.isNotEmpty()) "${notifications.size} actives" else "À jour",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF8E8E93)
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (notifications.isNotEmpty()) {
+                        TextButton(
+                            onClick = {
+                                if (settings.hapticFeedback) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                                onDismissAll()
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "Effacer tout",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFFFF3B30)
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = {
+                            if (settings.hapticFeedback) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                            onExpandShade()
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.OpenInFull,
+                            contentDescription = "Ouvrir volet",
+                            tint = if (isDark) Color.White.copy(alpha = 0.7f) else Color(0xFF8E8E93),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            if (!isPermissionGranted) {
+                // Permission not granted state
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (isDark) Color.White.copy(alpha = 0.06f)
+                            else Color.Black.copy(alpha = 0.04f)
+                        )
+                        .padding(14.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Accès aux notifications requis",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isDark) Color.White else Color(0xFF1C1C1E)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Activez l'accès pour synchroniser et afficher les notifications en direct dans ce widget.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isDark) Color.White.copy(alpha = 0.65f) else Color(0xFF8E8E93),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = onOpenSettings,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Text("Autoriser l'accès", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            } else if (notifications.isEmpty()) {
+                // Empty state
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (isDark) Color.White.copy(alpha = 0.05f)
+                            else Color.Black.copy(alpha = 0.03f)
+                        )
+                        .padding(vertical = 16.dp, horizontal = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF34C759),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Aucune notification en attente",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isDark) Color.White.copy(alpha = 0.7f) else Color(0xFF687076),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            } else {
+                // List of active notifications
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    notifications.take(5).forEach { notif ->
+                        NotificationItemRow(
+                            notification = notif,
+                            isDark = isDark,
+                            onDismiss = { onDismiss(notif.key) },
+                            onClick = {
+                                try {
+                                    notif.pendingIntent?.send()
+                                } catch (_: Exception) {
+                                    onAppClick(notif.packageName)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationItemRow(
+    notification: ActiveNotificationModel,
+    isDark: Boolean,
+    onDismiss: () -> Unit,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (isDark) Color.White.copy(alpha = 0.08f)
+                else Color.Black.copy(alpha = 0.04f)
+            )
+            .border(
+                0.5.dp,
+                if (isDark) Color.White.copy(alpha = 0.12f)
+                else Color.Black.copy(alpha = 0.06f),
+                RoundedCornerShape(16.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = notification.appName.ifBlank { notification.packageName },
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = formatTimeAgo(notification.postTime),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isDark) Color.White.copy(alpha = 0.45f) else Color(0xFF8E8E93),
+                        fontSize = 10.sp
+                    )
+                }
+                if (notification.title.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = notification.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isDark) Color.White else Color(0xFF1C1C1E),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (notification.text.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(1.dp))
+                    Text(
+                        text = notification.text,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isDark) Color.White.copy(alpha = 0.70f) else Color(0xFF3C3C43),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Effacer",
+                    tint = if (isDark) Color.White.copy(alpha = 0.5f) else Color(0xFF8E8E93),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
     }
 }

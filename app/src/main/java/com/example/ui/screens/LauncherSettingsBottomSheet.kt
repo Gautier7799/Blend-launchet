@@ -651,6 +651,20 @@ fun LauncherSettingsBottomSheet(
                         checked = settings.showTasksWidget,
                         onCheckedChange = { viewModel.updateSettings(settings.copy(showTasksWidget = it)) }
                     )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Notifications Center Widget
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Notifications,
+                        title = "Widget Centre de Notifications (iOS)",
+                        subtitle = "Affiche les notifications actives avec actions directes et suppression",
+                        checked = settings.showNotificationsWidget,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(showNotificationsWidget = it)) }
+                    )
                 }
             }
 

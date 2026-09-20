@@ -1,5 +1,6 @@
 package com.example.service
 
+import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -10,6 +11,17 @@ import android.text.TextUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+
+data class ActiveNotificationModel(
+    val key: String,
+    val packageName: String,
+    val appName: String,
+    val title: String,
+    val text: String,
+    val postTime: Long,
+    val isClearable: Boolean,
+    val pendingIntent: PendingIntent? = null
+)
 
 class BlendNotificationListenerService : NotificationListenerService() {
 
@@ -47,16 +59,44 @@ class BlendNotificationListenerService : NotificationListenerService() {
         try {
             val notifications = activeNotifications ?: emptyArray()
             val counts = mutableMapOf<String, Int>()
+            val list = mutableListOf<ActiveNotificationModel>()
+            val pm = packageManager
             for (sbn in notifications) {
                 // Ignore ongoing/sticky notifications like media players or foreground services if clearable
                 if (sbn != null && sbn.isClearable) {
                     val pkg = sbn.packageName
-                    if (!pkg.isNullOrEmpty()) {
+                    if (!pkg.isNullOrEmpty() && pkg != packageName) {
                         counts[pkg] = (counts[pkg] ?: 0) + 1
+                        val extras = sbn.notification?.extras
+                        val title = extras?.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString() ?: ""
+                        val text = extras?.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString()
+                            ?: extras?.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT)?.toString()
+                            ?: ""
+                        val appLabel = try {
+                            val ai = pm.getApplicationInfo(pkg, 0)
+                            pm.getApplicationLabel(ai).toString()
+                        } catch (_: Exception) {
+                            pkg
+                        }
+                        if (title.isNotEmpty() || text.isNotEmpty()) {
+                            list.add(
+                                ActiveNotificationModel(
+                                    key = sbn.key,
+                                    packageName = pkg,
+                                    appName = appLabel,
+                                    title = title,
+                                    text = text,
+                                    postTime = sbn.postTime,
+                                    isClearable = sbn.isClearable,
+                                    pendingIntent = sbn.notification?.contentIntent
+                                )
+                            )
+                        }
                     }
                 }
             }
             _notificationCounts.value = counts
+            _activeNotifications.value = list.sortedByDescending { it.postTime }.take(25)
         } catch (_: Exception) {
         }
     }
@@ -66,8 +106,25 @@ class BlendNotificationListenerService : NotificationListenerService() {
         private val _notificationCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
         val notificationCounts: StateFlow<Map<String, Int>> = _notificationCounts.asStateFlow()
 
+        private val _activeNotifications = MutableStateFlow<List<ActiveNotificationModel>>(emptyList())
+        val activeNotificationsList: StateFlow<List<ActiveNotificationModel>> = _activeNotifications.asStateFlow()
+
         fun isConnected(): Boolean {
             return instance != null
+        }
+
+        fun cancelNotificationByKey(key: String) {
+            try {
+                instance?.cancelNotification(key)
+                instance?.updateActiveCounts()
+            } catch (_: Exception) {}
+        }
+
+        fun cancelAllActiveNotifications() {
+            try {
+                instance?.cancelAllNotifications()
+                instance?.updateActiveCounts()
+            } catch (_: Exception) {}
         }
 
         fun isNotificationAccessGranted(context: Context): Boolean {

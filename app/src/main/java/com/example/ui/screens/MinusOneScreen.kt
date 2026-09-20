@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.AppItem
+import com.example.service.ActiveNotificationModel
 import com.example.ui.viewmodels.LauncherSettings
 import com.example.ui.viewmodels.LauncherTask
 
@@ -49,6 +50,7 @@ fun MinusOneScreen(
     settings: LauncherSettings,
     tasks: List<LauncherTask> = emptyList(),
     apps: List<AppItem> = emptyList(),
+    activeNotifications: List<ActiveNotificationModel> = emptyList(),
     onAddTask: (String) -> Unit = {},
     onToggleTask: (String) -> Unit = {},
     onDeleteTask: (String) -> Unit = {},
@@ -56,6 +58,10 @@ fun MinusOneScreen(
     onOpenDrawer: () -> Unit = {},
     onAiClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onDismissNotification: (String) -> Unit = {},
+    onDismissAllNotifications: () -> Unit = {},
+    onOpenNotificationSettings: () -> Unit = {},
+    onExpandNotificationShade: () -> Unit = {},
     onReorderWidget: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
     onDeleteWidget: (widgetKey: String) -> Unit = {},
     onOpenManageWidgets: () -> Unit = {},
@@ -88,10 +94,32 @@ fun MinusOneScreen(
         val composable: @Composable () -> Unit
     )
 
-    val activeWidgets = remember(settings, tasks, apps) {
+    val activeWidgets = remember(settings, tasks, apps, activeNotifications) {
         val list = mutableListOf<ActiveWidgetItem>()
         for (key in settings.widgetOrder) {
             when (key) {
+                "notifications" -> {
+                    if (settings.showNotificationsWidget) {
+                        list.add(
+                            ActiveWidgetItem(
+                                key = "notifications",
+                                title = "Notifications & Activités",
+                                composable = {
+                                    NotificationsCenterCard(
+                                        notifications = activeNotifications,
+                                        onDismiss = onDismissNotification,
+                                        onDismissAll = onDismissAllNotifications,
+                                        onOpenSettings = onOpenNotificationSettings,
+                                        onExpandShade = onExpandNotificationShade,
+                                        onAppClick = onAppClick,
+                                        settings = settings,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            )
+                        )
+                    }
+                }
                 "battery" -> {
                     if (settings.showDeviceCardWidget) {
                         list.add(
