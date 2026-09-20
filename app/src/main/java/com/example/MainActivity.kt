@@ -1,5 +1,6 @@
 package com.example
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -7,7 +8,9 @@ import android.provider.MediaStore
 import android.speech.RecognizerIntent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
@@ -191,6 +194,26 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     var isReorderingMode by remember { mutableStateOf(false) }
     var selectedActionApp by remember { mutableStateOf<AppItem?>(null) }
     var isAiAssistantOpen by remember { mutableStateOf(false) }
+
+    // Location Permission launcher for real-time accurate weather sync ("ma position")
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (granted) {
+            viewModel.refreshWeather()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        locationPermissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
+    }
 
     // React to Home button or system home intent
     LaunchedEffect(viewModel) {
@@ -465,13 +488,16 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             }
                         }
                         .padding(
-                            top = if (settings.showIosHomeWidgets && (settings.widgetPlacement == "home" || settings.widgetPlacement == "both")) {
-                                if (settings.fullscreenMode) 14.dp else 26.dp
-                            } else {
+                            top = run {
                                 val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                                 val cutoutTop = WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
-                                val safeTop = maxOf(statusBarTop, cutoutTop, 44.dp)
-                                safeTop + 28.dp
+                                val safeTop = maxOf(statusBarTop, cutoutTop, 48.dp)
+                                if (settings.showIosHomeWidgets && (settings.widgetPlacement == "home" || settings.widgetPlacement == "both")) {
+                                    // Generous spacing safely below capsule island + user adjustment
+                                    safeTop + 18.dp + settings.widgetTopSpacingDp.dp
+                                } else {
+                                    safeTop + 24.dp
+                                }
                             },
                             start = 14.dp,
                             end = 14.dp
@@ -646,12 +672,20 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             exit = fadeOut(tween(150)),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = if (pagerState.currentPage == 1) 116.dp else 24.dp)
+                .padding(bottom = if (pagerState.currentPage == 1) 124.dp else 24.dp)
         ) {
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.Black.copy(alpha = 0.28f))
+                    .background(
+                        if (isNightTime) Color.Black.copy(alpha = 0.25f)
+                        else Color.White.copy(alpha = 0.42f)
+                    )
+                    .border(
+                        0.8.dp,
+                        if (isNightTime) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.60f),
+                        RoundedCornerShape(12.dp)
+                    )
                     .padding(horizontal = 9.dp, vertical = 5.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -663,7 +697,11 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             .size(if (isSelected) 8.dp else 5.dp)
                             .clip(CircleShape)
                             .background(
-                                if (isSelected) Color.White else Color.White.copy(alpha = 0.40f)
+                                if (isSelected) {
+                                    if (isNightTime) Color.White else Color(0xFF1C1C1E)
+                                } else {
+                                    if (isNightTime) Color.White.copy(alpha = 0.38f) else Color.Black.copy(alpha = 0.25f)
+                                }
                             )
                             .clickable {
                                 coroutineScope.launch {
@@ -725,50 +763,31 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             )
                         }
                     }
+                    .shadow(
+                        elevation = 14.dp,
+                        shape = RoundedCornerShape(32.dp),
+                        spotColor = if (isNightTime) Color.Black.copy(alpha = 0.5f) else Color(0xFF1E3A8A).copy(alpha = 0.14f)
+                    )
                     .clip(RoundedCornerShape(32.dp))
                     .background(
                         Brush.verticalGradient(
-                            colors = if (isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled") {
+                            colors = if (isNightTime) {
                                 listOf(
-                                    Color(0xFF242832).copy(alpha = (settings.dockOpacity + 0.35f).coerceAtMost(0.88f)),
-                                    Color(0xFF161920).copy(alpha = (settings.dockOpacity + 0.20f).coerceAtMost(0.68f))
+                                    Color(0xFF2C2C2E).copy(alpha = (settings.dockOpacity + 0.25f).coerceIn(0.50f, 0.85f)),
+                                    Color(0xFF1C1C1E).copy(alpha = (settings.dockOpacity + 0.15f).coerceIn(0.40f, 0.75f))
                                 )
                             } else {
                                 listOf(
-                                    Color.White.copy(alpha = (settings.dockOpacity + 0.35f).coerceAtMost(0.88f)),
-                                    Color.White.copy(alpha = (settings.dockOpacity + 0.15f).coerceAtMost(0.62f))
+                                    Color.White.copy(alpha = (settings.dockOpacity + 0.35f).coerceIn(0.55f, 0.88f)),
+                                    Color.White.copy(alpha = (settings.dockOpacity + 0.15f).coerceIn(0.35f, 0.65f))
                                 )
                             }
                         )
                     )
-                    .then(
-                        if (settings.showDockLines) {
-                            val isDark = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
-                            Modifier.border(
-                                width = 1.dp,
-                                brush = Brush.verticalGradient(
-                                    colors = if (isDark) {
-                                        listOf(
-                                            Color.White.copy(alpha = 0.30f),
-                                            Color.White.copy(alpha = 0.08f)
-                                        )
-                                    } else {
-                                        listOf(
-                                            Color.Black.copy(alpha = 0.16f),
-                                            Color.Black.copy(alpha = 0.05f)
-                                        )
-                                    }
-                                ),
-                                shape = RoundedCornerShape(32.dp)
-                            )
-                        } else {
-                            val isDark = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
-                            Modifier.border(
-                                width = 1.dp,
-                                color = if (isDark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.45f),
-                                shape = RoundedCornerShape(32.dp)
-                            )
-                        }
+                    .border(
+                        width = 1.dp,
+                        color = if (isNightTime) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.75f),
+                        shape = RoundedCornerShape(32.dp)
                     )
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center
@@ -882,10 +901,9 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(28.dp)
                     .background(
-                        if (isNightTime) Color.Black.copy(alpha = 0.75f)
-                        else Color.Black.copy(alpha = 0.22f)
+                        if (isNightTime) Color.Black.copy(alpha = 0.70f)
+                        else Color.Black.copy(alpha = 0.40f)
                     )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },

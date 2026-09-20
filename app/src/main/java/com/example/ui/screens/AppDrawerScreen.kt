@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
 import android.speech.RecognizerIntent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -40,9 +42,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -119,16 +125,35 @@ fun AppDrawer(
         }
     }
 
+    // Hardware/System back handler to smoothly close drawer
+    BackHandler(enabled = true) {
+        onClose()
+    }
+
     // Frosted Glass styling matching iOS App Library with full Dynamic Day (Jour) and Night (Nuit) adaptation
-    val drawerBgColor = if (isDarkTheme) Color(0xFF0C0E15).copy(alpha = 0.96f) else Color(0xFFF3F4F7).copy(alpha = 0.96f)
-    val drawerBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.10f)
-    val handleColor = if (isDarkTheme) Color.White.copy(alpha = 0.50f) else Color.Black.copy(alpha = 0.30f)
-    val pillBgColor = if (isDarkTheme) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.88f)
-    val pillBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.30f) else Color.Black.copy(alpha = 0.12f)
+    val drawerBgColor = if (isDarkTheme) Color(0xFF0C0E15) else Color(0xFFF2F2F7)
+    val drawerBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.18f) else Color.Black.copy(alpha = 0.08f)
+    val handleColor = if (isDarkTheme) Color.White.copy(alpha = 0.40f) else Color.Black.copy(alpha = 0.25f)
+    val pillBgColor = if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.White
+    val pillBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.08f)
     val iconTint = if (isDarkTheme) Color.White.copy(alpha = 0.85f) else Color(0xFF3C3C43)
     val appItemTextColor = if (isDarkTheme) Color.White else Color(0xFF1C1C1E)
     val searchTextColor = if (isDarkTheme) Color.White else Color(0xFF1C1C1E)
     val searchPlaceholderColor = if (isDarkTheme) Color.White.copy(alpha = 0.60f) else Color(0xFF8E8E93)
+
+    val gridState = rememberLazyGridState()
+    val drawerNestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // When dragging downward at the top of the app list, smoothly slide down to home screen
+                if (available.y > 22f && gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0) {
+                    onClose()
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     // Rounded drawer sheet with frosted blur styling
     Surface(
@@ -148,23 +173,28 @@ fun AppDrawer(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
-            // Drag handle at top (dismiss gesture only on header to avoid lag in grid scroll)
+            // Drag handle at top (tap or swipe down anywhere on header to dismiss to home screen)
             var headerDragY by remember { mutableFloatStateOf(0f) }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 10.dp, bottom = 8.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { onClose() }
+                    )
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
                             onDragStart = { headerDragY = 0f },
                             onDragEnd = {
-                                if (headerDragY > 30f) onClose()
+                                if (headerDragY > 15f) onClose()
                                 headerDragY = 0f
                             },
                             onDragCancel = { headerDragY = 0f },
                             onVerticalDrag = { change, dragAmount ->
                                 headerDragY += dragAmount
-                                if (headerDragY > 40f) {
+                                if (headerDragY > 20f) {
                                     change.consume()
                                     onClose()
                                 }
@@ -175,8 +205,8 @@ fun AppDrawer(
             ) {
                 Box(
                     modifier = Modifier
-                        .width(36.dp)
-                        .height(4.dp)
+                        .width(38.dp)
+                        .height(4.5.dp)
                         .clip(CircleShape)
                         .background(handleColor)
                 )
@@ -304,10 +334,13 @@ fun AppDrawer(
                 // --- Pure iOS App Library Category Boxes (2 columns) ---
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
+                    state = gridState,
                     contentPadding = PaddingValues(top = 4.dp, bottom = 90.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .nestedScroll(drawerNestedScrollConnection)
                 ) {
                     items(
                         items = categorizedApps,
@@ -362,8 +395,8 @@ fun IosCategoryBox(
     onAppLongClick: (AppItem) -> Unit,
     onExpandCategory: () -> Unit
 ) {
-    val boxBgColor = if (isDarkTheme) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.76f)
-    val boxBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.08f)
+    val boxBgColor = if (isDarkTheme) Color(0xFF1C1C1E) else Color.White
+    val boxBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.06f)
     val currentLocale = java.util.Locale.getDefault().language
     val categoryTitle = if (currentLocale == "ar") category.titleAr else category.titleEn
 

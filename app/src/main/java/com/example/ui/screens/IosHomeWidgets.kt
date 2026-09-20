@@ -79,15 +79,7 @@ fun IosHomeWidgetsRow(
 
     // Live weather connected to real device location / region
     var liveWeather by remember {
-        mutableStateOf(
-            com.example.util.LiveWeatherData(
-                city = if (settings.iosWidgetCity.isNotBlank()) settings.iosWidgetCity else com.example.util.LocationWeatherHelper.detectDeviceCity(context),
-                temperature = "24°",
-                condition = "Ensoleillé",
-                highLow = "H:26°  L:18°",
-                isSunny = true
-            )
-        )
+        mutableStateOf(com.example.util.LocationWeatherHelper.getCachedWeather())
     }
 
     LaunchedEffect(settings.iosWidgetCity) {

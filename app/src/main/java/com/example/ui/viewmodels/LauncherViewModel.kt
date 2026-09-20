@@ -13,6 +13,8 @@ import com.example.data.AppRepository
 import com.example.domain.AppItem
 import com.example.service.BlendAccessibilityService
 import com.example.service.BlendNotificationListenerService
+import com.example.util.LiveWeatherData
+import com.example.util.LocationWeatherHelper
 import com.example.util.SystemPermissionsHelper
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,6 +89,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val _dockAppPackages = MutableStateFlow<List<String>>(loadDockAppPackages())
     val dockAppPackages: StateFlow<List<String>> = _dockAppPackages.asStateFlow()
 
+    private val _liveWeather = MutableStateFlow<LiveWeatherData>(LocationWeatherHelper.getCachedWeather())
+    val liveWeather: StateFlow<LiveWeatherData> = _liveWeather.asStateFlow()
+
+    fun refreshWeather() {
+        viewModelScope.launch {
+            val weather = LocationWeatherHelper.fetchLiveWeather(
+                getApplication(),
+                customCity = _settings.value.iosWidgetCity.ifBlank { null }
+            )
+            _liveWeather.value = weather
+        }
+    }
+
     private val _closeOverlaysTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val closeOverlaysTrigger: SharedFlow<Unit> = _closeOverlaysTrigger.asSharedFlow()
 
@@ -103,6 +118,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     init {
         loadApps()
         registerPackageReceiver()
+        refreshWeather()
     }
 
     private fun registerPackageReceiver() {
