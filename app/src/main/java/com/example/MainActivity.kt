@@ -465,7 +465,14 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             }
                         }
                         .padding(
-                            top = if (settings.fullscreenMode) 14.dp else 26.dp,
+                            top = if (settings.showIosHomeWidgets && (settings.widgetPlacement == "home" || settings.widgetPlacement == "both")) {
+                                if (settings.fullscreenMode) 14.dp else 26.dp
+                            } else {
+                                val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                                val cutoutTop = WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
+                                val safeTop = maxOf(statusBarTop, cutoutTop, 44.dp)
+                                safeTop + 28.dp
+                            },
                             start = 14.dp,
                             end = 14.dp
                         )
@@ -876,7 +883,10 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 modifier = Modifier
                     .fillMaxSize()
                     .blur(28.dp)
-                    .background(Color.Black.copy(alpha = 0.85f))
+                    .background(
+                        if (isNightTime) Color.Black.copy(alpha = 0.75f)
+                        else Color.Black.copy(alpha = 0.22f)
+                    )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -902,6 +912,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 apps = apps,
                 settings = settings,
                 notificationCounts = notificationCounts,
+                isDarkTheme = isNightTime,
                 onAppClick = { viewModel.launchApp(it) },
                 onAppLongClick = { selectedActionApp = it },
                 onClose = { isDrawerOpen = false },

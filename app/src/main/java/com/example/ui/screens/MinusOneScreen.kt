@@ -71,7 +71,10 @@ fun MinusOneScreen(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    val isDark = isSystemInDarkTheme()
+    val currentHour = remember {
+        java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    }
+    val isDark = isSystemInDarkTheme() || currentHour !in 6..18 || settings.wallpaperType == "dark_amoled"
 
     var isEditMode by remember { mutableStateOf(false) }
 
@@ -208,12 +211,16 @@ fun MinusOneScreen(
         list
     }
 
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val cutoutTop = WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
+    val safeCapsuleTop = maxOf(statusBarTop, cutoutTop, 44.dp)
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         contentPadding = PaddingValues(
-            top = if (settings.fullscreenMode) 24.dp else 52.dp,
+            top = if (settings.fullscreenMode) safeCapsuleTop - 4.dp else safeCapsuleTop + 16.dp,
             bottom = 48.dp
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)

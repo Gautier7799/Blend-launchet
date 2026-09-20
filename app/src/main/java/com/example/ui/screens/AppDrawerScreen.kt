@@ -88,6 +88,7 @@ fun AppDrawer(
     apps: List<AppItem>,
     settings: LauncherSettings,
     notificationCounts: Map<String, Int> = emptyMap(),
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
     onAppClick: (String) -> Unit,
     onAppLongClick: (AppItem) -> Unit,
     onClose: () -> Unit,
@@ -118,16 +119,16 @@ fun AppDrawer(
         }
     }
 
-    val isDarkTheme = isSystemInDarkTheme() || settings.wallpaperType == "dark_amoled"
-
-    // Frosted Glass styling matching iOS App Library with high opacity to hide wallpaper/widgets completely
-    val drawerBgColor = if (isDarkTheme) Color(0xFF0C0E15).copy(alpha = 0.96f) else Color(0xFF141720).copy(alpha = 0.95f)
-    val drawerBorderColor = Color.White.copy(alpha = 0.25f)
-    val handleColor = Color.White.copy(alpha = 0.50f)
-    val pillBgColor = Color.White.copy(alpha = 0.20f)
-    val pillBorderColor = Color.White.copy(alpha = 0.35f)
-    val iconTint = Color.White.copy(alpha = 0.85f)
-    val appItemTextColor = Color.White
+    // Frosted Glass styling matching iOS App Library with full Dynamic Day (Jour) and Night (Nuit) adaptation
+    val drawerBgColor = if (isDarkTheme) Color(0xFF0C0E15).copy(alpha = 0.96f) else Color(0xFFF3F4F7).copy(alpha = 0.96f)
+    val drawerBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.10f)
+    val handleColor = if (isDarkTheme) Color.White.copy(alpha = 0.50f) else Color.Black.copy(alpha = 0.30f)
+    val pillBgColor = if (isDarkTheme) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.88f)
+    val pillBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.30f) else Color.Black.copy(alpha = 0.12f)
+    val iconTint = if (isDarkTheme) Color.White.copy(alpha = 0.85f) else Color(0xFF3C3C43)
+    val appItemTextColor = if (isDarkTheme) Color.White else Color(0xFF1C1C1E)
+    val searchTextColor = if (isDarkTheme) Color.White else Color(0xFF1C1C1E)
+    val searchPlaceholderColor = if (isDarkTheme) Color.White.copy(alpha = 0.60f) else Color(0xFF8E8E93)
 
     // Rounded drawer sheet with frosted blur styling
     Surface(
@@ -212,18 +213,18 @@ fun AppDrawer(
                         onValueChange = { searchQuery = it },
                         singleLine = true,
                         textStyle = TextStyle(
-                            color = Color.White,
+                            color = searchTextColor,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Normal
                         ),
-                        cursorBrush = SolidColor(Color.White),
+                        cursorBrush = SolidColor(if (isDarkTheme) Color.White else Color(0xFF007AFF)),
                         modifier = Modifier.weight(1f),
                         decorationBox = { innerTextField ->
                             Box(contentAlignment = Alignment.CenterStart) {
                                 if (searchQuery.isEmpty()) {
                                     Text(
                                         searchPlaceholder,
-                                        color = Color.White.copy(alpha = 0.65f),
+                                        color = searchPlaceholderColor,
                                         fontSize = 15.sp
                                     )
                                 }
@@ -361,8 +362,8 @@ fun IosCategoryBox(
     onAppLongClick: (AppItem) -> Unit,
     onExpandCategory: () -> Unit
 ) {
-    val boxBgColor = Color.White.copy(alpha = if (isDarkTheme) 0.14f else 0.24f)
-    val boxBorderColor = Color.White.copy(alpha = if (isDarkTheme) 0.22f else 0.42f)
+    val boxBgColor = if (isDarkTheme) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.76f)
+    val boxBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.08f)
     val currentLocale = java.util.Locale.getDefault().language
     val categoryTitle = if (currentLocale == "ar") category.titleAr else category.titleEn
 
@@ -374,7 +375,7 @@ fun IosCategoryBox(
             shape = RoundedCornerShape(26.dp),
             color = boxBgColor,
             border = BorderStroke(1.dp, boxBorderColor),
-            shadowElevation = 2.dp,
+            shadowElevation = if (isDarkTheme) 2.dp else 4.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
@@ -402,6 +403,7 @@ fun IosCategoryBox(
                         MiniAppSlot(
                             app = directApps[0],
                             badgeCount = notificationCounts[directApps[0].packageName] ?: 0,
+                            isDarkTheme = isDarkTheme,
                             onClick = { onAppClick(directApps[0].packageName) },
                             onLongClick = { onAppLongClick(directApps[0]) }
                         )
@@ -413,6 +415,7 @@ fun IosCategoryBox(
                         MiniAppSlot(
                             app = directApps[1],
                             badgeCount = notificationCounts[directApps[1].packageName] ?: 0,
+                            isDarkTheme = isDarkTheme,
                             onClick = { onAppClick(directApps[1].packageName) },
                             onLongClick = { onAppLongClick(directApps[1]) }
                         )
@@ -431,6 +434,7 @@ fun IosCategoryBox(
                         MiniAppSlot(
                             app = directApps[2],
                             badgeCount = notificationCounts[directApps[2].packageName] ?: 0,
+                            isDarkTheme = isDarkTheme,
                             onClick = { onAppClick(directApps[2].packageName) },
                             onLongClick = { onAppLongClick(directApps[2]) }
                         )
@@ -443,6 +447,7 @@ fun IosCategoryBox(
                         MiniAppSlot(
                             app = directApps[3],
                             badgeCount = notificationCounts[directApps[3].packageName] ?: 0,
+                            isDarkTheme = isDarkTheme,
                             onClick = { onAppClick(directApps[3].packageName) },
                             onLongClick = { onAppLongClick(directApps[3]) }
                         )
@@ -462,20 +467,27 @@ fun IosCategoryBox(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Clean Category Label below the box
+        // Dynamic Day/Night Category Label below the box
         Text(
             text = categoryTitle,
-            color = Color.White,
+            color = if (isDarkTheme) Color.White else Color(0xFF1C1C1E),
             fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = TextStyle(
-                shadow = androidx.compose.ui.graphics.Shadow(
-                    color = Color.Black.copy(alpha = 0.70f),
-                    blurRadius = 4f
-                )
+                shadow = if (isDarkTheme) {
+                    androidx.compose.ui.graphics.Shadow(
+                        color = Color.Black.copy(alpha = 0.70f),
+                        blurRadius = 4f
+                    )
+                } else {
+                    androidx.compose.ui.graphics.Shadow(
+                        color = Color.White.copy(alpha = 0.80f),
+                        blurRadius = 2f
+                    )
+                }
             )
         )
     }
@@ -487,6 +499,7 @@ fun IosCategoryBox(
 private fun MiniAppSlot(
     app: AppItem,
     badgeCount: Int,
+    isDarkTheme: Boolean = true,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -497,24 +510,38 @@ private fun MiniAppSlot(
             .shadow(
                 elevation = 4.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = Color.White.copy(alpha = 0.25f)
+                spotColor = if (isDarkTheme) Color.White.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.08f)
             )
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = 0.25f),
-                        Color.White.copy(alpha = 0.08f)
-                    )
+                    if (isDarkTheme) {
+                        listOf(
+                            Color.White.copy(alpha = 0.25f),
+                            Color.White.copy(alpha = 0.08f)
+                        )
+                    } else {
+                        listOf(
+                            Color.White.copy(alpha = 0.95f),
+                            Color(0xFFF0F0F2).copy(alpha = 0.90f)
+                        )
+                    }
                 )
             )
             .border(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = 0.60f),
-                        Color.White.copy(alpha = 0.16f)
-                    )
+                    if (isDarkTheme) {
+                        listOf(
+                            Color.White.copy(alpha = 0.60f),
+                            Color.White.copy(alpha = 0.16f)
+                        )
+                    } else {
+                        listOf(
+                            Color.Black.copy(alpha = 0.10f),
+                            Color.Black.copy(alpha = 0.04f)
+                        )
+                    }
                 ),
                 shape = RoundedCornerShape(16.dp)
             )
@@ -586,8 +613,8 @@ private fun ClusterFolderSlot(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val clusterBg = Color.White.copy(alpha = if (isDarkTheme) 0.16f else 0.25f)
-    val clusterBorder = Color.White.copy(alpha = if (isDarkTheme) 0.20f else 0.40f)
+    val clusterBg = if (isDarkTheme) Color.White.copy(alpha = 0.16f) else Color(0xFFE5E5EA).copy(alpha = 0.85f)
+    val clusterBorder = if (isDarkTheme) Color.White.copy(alpha = 0.20f) else Color.Black.copy(alpha = 0.08f)
 
     Surface(
         shape = RoundedCornerShape(14.dp),
