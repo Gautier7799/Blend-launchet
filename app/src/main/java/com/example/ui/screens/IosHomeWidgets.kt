@@ -276,43 +276,9 @@ fun IosHomeWidgetsRow(
                     }
                 }
 
-                // Four Circular Touch Resize Handles on borders (matching Screenshot 1)
-                if (isEditMode) {
-                    // Top handle
-                    ResizeHandleDot(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .offset(y = (-6).dp),
-                        onClick = onRaiseWidget
-                    )
-
-                    // Bottom handle: Lower widget
-                    ResizeHandleDot(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .offset(y = 6.dp),
-                        onClick = onLowerWidget
-                    )
-
-                    // Left handle: Toggle style
-                    ResizeHandleDot(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .offset(x = (-6).dp),
-                        onClick = onToggleStyle
-                    )
-
-                    // Right handle: Toggle style
-                    ResizeHandleDot(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .offset(x = 6.dp),
-                        onClick = onToggleStyle
-                    )
-                }
             }
 
-            // Quick Actions Strip in Edit Mode
+            // Quick Actions Strip in Edit Mode (Style switch, delete, done - touch resize disabled)
             androidx.compose.animation.AnimatedVisibility(
                 visible = isEditMode,
                 enter = androidx.compose.animation.fadeIn(),
@@ -331,32 +297,11 @@ fun IosHomeWidgetsRow(
                     TextButton(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onLowerWidget()
-                        },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text("↓ أنزل الودجت", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    Box(modifier = Modifier.width(1.dp).height(14.dp).background(Color.White.copy(alpha = 0.25f)))
-
-                    TextButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onToggleStyle()
                         },
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text("تغيير الشكل", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                    }
-
-                    Box(modifier = Modifier.width(1.dp).height(14.dp).background(Color.White.copy(alpha = 0.25f)))
-
-                    TextButton(
-                        onClick = onOpenTouchControls,
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text("تحكم باللمس", color = Color(0xFF64D2FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Box(modifier = Modifier.width(1.dp).height(14.dp).background(Color.White.copy(alpha = 0.25f)))
@@ -434,7 +379,7 @@ fun IosWeatherSquareWidget(
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(152.dp)
+                .height(148.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .semantics(mergeDescendants = true) {
                     role = Role.Button
@@ -531,26 +476,14 @@ fun IosWeatherSquareWidget(
                 }
             }
         }
-
-        // Subtitle Label below widget: "Weather"
-        if (showLabels) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Weather",
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.shadow(2.dp)
-            )
-        }
+        // Subtitle label "Weather" permanently removed as requested by user (red X)
     }
 }
 
 /**
  * 2. iOS Square Battery Ring Widget (2x2)
- * Matches Screenshot 1 & 3:
- * Translucent frosted card, circular green battery ring with phone icon, "100%" text, "Battery" label below.
+ * High-intensity frosted glass blur with green charging ring & percentage.
+ * Subtitle label "Battery" permanently removed as requested by user (red X).
  */
 @Composable
 fun IosBatterySquareWidget(
@@ -561,22 +494,48 @@ fun IosBatterySquareWidget(
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
-    val cardBg = if (isDark) Color(0x35FFFFFF) else Color(0x75FFFFFF)
-    val cardBorder = if (isDark) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.5f)
 
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Surface(
-            shape = RoundedCornerShape(24.dp),
-            shadowElevation = 8.dp,
-            border = BorderStroke(1.dp, cardBorder),
-            color = cardBg,
+        // High-intensity Frosted Blur Card matching user request ("مع زيادة حدة blur في ايقونة البطارية")
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(152.dp)
+                .height(148.dp)
+                .shadow(
+                    elevation = 10.dp,
+                    shape = RoundedCornerShape(24.dp),
+                    spotColor = if (isDark) Color.Black.copy(alpha = 0.5f) else Color(0x35000000),
+                    ambientColor = Color.Black.copy(alpha = 0.22f)
+                )
                 .clip(RoundedCornerShape(24.dp))
+                .background(
+                    Brush.verticalGradient(
+                        colors = if (isDark) listOf(
+                            Color(0x65FFFFFF),
+                            Color(0x32FFFFFF),
+                            Color(0x18151D30),
+                            Color(0x3E0A0F1A)
+                        ) else listOf(
+                            Color(0xB5FFFFFF),
+                            Color(0x75FFFFFF),
+                            Color(0x58E2E8F0),
+                            Color(0x80CBD5E1)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.4.dp,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = if (isDark) 0.72f else 0.94f),
+                            Color.White.copy(alpha = if (isDark) 0.20f else 0.45f)
+                        )
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                )
                 .semantics(mergeDescendants = true) {
                     role = Role.Button
                     contentDescription = "Widget Batterie, $batteryPercent pourcent, ${if (isCharging) "En charge" else "Sur batterie"}"
@@ -586,6 +545,21 @@ fun IosBatterySquareWidget(
                     onClick = onBatteryClick
                 )
         ) {
+            // Intense frosted specular sheen
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = if (isDark) 0.35f else 0.55f),
+                                Color.Transparent,
+                                Color.White.copy(alpha = if (isDark) 0.10f else 0.25f)
+                            )
+                        )
+                    )
+            )
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -617,19 +591,7 @@ fun IosBatterySquareWidget(
                 }
             }
         }
-
-        // Subtitle Label below widget: "Battery"
-        if (showLabels) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Battery",
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.shadow(2.dp)
-            )
-        }
+        // Subtitle label "Battery" permanently removed as requested by user (red X)
     }
 }
 
@@ -713,19 +675,7 @@ fun IosQuadBatteryWidget(
                 )
             }
         }
-
-        // Subtitle Label below widget: "Battery"
-        if (showLabels) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Battery",
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.shadow(2.dp)
-            )
-        }
+        // Subtitle label "Battery" permanently removed as requested by user (red X)
     }
 }
 

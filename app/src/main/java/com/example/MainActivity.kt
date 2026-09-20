@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,6 +28,9 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.example.ui.screens.IconResizeTouchBar
 import com.example.ui.screens.PinchZoomHudPill
@@ -252,7 +256,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     )
 
     var accumulatedDrag by remember { mutableFloatStateOf(0f) }
-    val pagerState = rememberPagerState(initialPage = 1, pageCount = { 2 })
+    val pagerState = rememberPagerState(initialPage = 1, pageCount = { 3 })
+    val coroutineScope = rememberCoroutineScope()
 
     var isTouchResizeBarOpen by remember { mutableStateOf(false) }
     var isWidgetEditMode by remember { mutableStateOf(false) }
@@ -270,11 +275,78 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
         }
     }
 
+    // Dynamic Day & Night Blurred Sky Canvas colors
+    val isSystemDark = isSystemInDarkTheme()
+    val currentHour = remember {
+        java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    }
+    val isNightTime = isSystemDark || currentHour !in 6..18 || settings.wallpaperType == "dark_amoled"
+
+    val bgTopColor by animateColorAsState(
+        targetValue = if (isNightTime) Color(0xFF0D1322) else Color(0xFF4B85DA),
+        animationSpec = tween(1200),
+        label = "bg_top"
+    )
+    val bgMidColor by animateColorAsState(
+        targetValue = if (isNightTime) Color(0xFF161E33) else Color(0xFF6DA4F2),
+        animationSpec = tween(1200),
+        label = "bg_mid"
+    )
+    val bgBottomColor by animateColorAsState(
+        targetValue = if (isNightTime) Color(0xFF080C16) else Color(0xFFCBE0FA),
+        animationSpec = tween(1200),
+        label = "bg_bottom"
+    )
+    val ambientGlowColor by animateColorAsState(
+        targetValue = if (isNightTime) Color(0xFF4F46E5).copy(alpha = 0.28f) else Color(0xFFFFD54F).copy(alpha = 0.32f),
+        animationSpec = tween(1200),
+        label = "ambient_glow"
+    )
+
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Transparent)
+        modifier = Modifier.fillMaxSize()
     ) {
+        // --- 1. Dynamic Day / Night Blurred Atmosphere Canvas ---
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(bgTopColor, bgMidColor, bgBottomColor)
+                    )
+                )
+        )
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            // Ambient Sun / Moon Glow Orb
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(ambientGlowColor, Color.Transparent),
+                    center = Offset(size.width * 0.75f, size.height * 0.22f),
+                    radius = size.width * 0.85f
+                )
+            )
+            // Soft Secondary Nebula / Horizon Glow
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        (if (isNightTime) Color(0xFF6D28D9) else Color(0xFF93C5FD)).copy(alpha = 0.22f),
+                        Color.Transparent
+                    ),
+                    center = Offset(size.width * 0.20f, size.height * 0.70f),
+                    radius = size.width * 0.75f
+                )
+            )
+        }
+        // Frosted blur glass scrim
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    if (isNightTime) Color.Black.copy(alpha = 0.16f)
+                    else Color.White.copy(alpha = 0.10f)
+                )
+        )
+
         // Background gesture detector (placed behind everything)
         Box(
             modifier = Modifier
@@ -328,14 +400,12 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 }
         )
         
-        // --- Horizontal Pager: Page 0 = Secondary Dashboard, Page 1 = Main Home Screen ---
+        // --- Horizontal Pager: Page 0 & 2 = Secondary Dashboard, Page 1 = Main Home Screen ---
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(if (isDrawerOpen) Modifier.blur(32.dp) else Modifier)
+            modifier = Modifier.fillMaxSize()
         ) { page ->
-            if (page == 0) {
+            if (page == 0 || page == 2) {
                 // Secondary Dashboard (Minus-One Screen with Google News, Smart Firestore Search, Widgets)
                 MinusOneScreen(
                     settings = settings,
@@ -361,7 +431,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                     onUpdateSettings = { viewModel.updateSettings(it) }
                 )
             } else {
-                // Main Home Screen Content
+                // Main Home Screen Content (Page 1)
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -376,40 +446,15 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                                 isWidgetEditMode = false
                             }
                         }
-                        .pointerInput(Unit) {
-                            detectTransformGestures { _, _, zoom, _ ->
-                                if (kotlin.math.abs(zoom - 1f) > 0.012f) {
-                                    val newSize = (pinchZoomLevel * zoom).coerceIn(40f, 82f)
-                                    pinchZoomLevel = newSize
-                                    val rounded = newSize.toInt()
-                                    if (rounded != settings.iconSizeDp) {
-                                        viewModel.setIconSize(rounded)
-                                        showPinchHud = true
-                                    }
-                                }
-                            }
-                        }
                         .padding(
-                            top = if (settings.fullscreenMode) 46.dp else 68.dp,
-                            start = 16.dp,
-                            end = 16.dp
+                            top = if (settings.fullscreenMode) 14.dp else 26.dp,
+                            start = 14.dp,
+                            end = 14.dp
                         )
                 ) {
-                    // Top Widgets Area (iOS 17 Widgets & optional classic TopWidgetsBar)
+                    // Top Widgets Area (iOS 17 Widgets: Weather + Battery ascending to top)
                     if (!isReorderingMode) {
-                        if (settings.showTopBarWidgets) {
-                            TopWidgetsBar(
-                                settings = settings,
-                                onAiClick = { isAiAssistantOpen = true },
-                                onSettingsClick = { isSettingsOpen = true }
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                        }
-
-                        // iOS 17 Home Screen Widgets (Weather + Battery pair or Quad Multi-Device Battery)
                         if (settings.showIosHomeWidgets && (settings.widgetPlacement == "home" || settings.widgetPlacement == "both")) {
-                            // Extra top spacer to lower the widget away from status bar as requested ("انزل قليلا widget")
-                            Spacer(modifier = Modifier.height(settings.widgetTopSpacingDp.dp))
                             IosHomeWidgetsRow(
                                 settings = settings,
                                 onOpenSettings = { isSettingsOpen = true },
@@ -429,19 +474,16 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                                 onRaiseWidget = {
                                     viewModel.setWidgetTopSpacing(settings.widgetTopSpacingDp - 8)
                                 },
-                                onOpenTouchControls = {
-                                    isTouchResizeBarOpen = true
-                                    isWidgetEditMode = false
-                                }
+                                onOpenTouchControls = { }
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                         }
                     }
 
                     // Home Screen Grid with dynamic reordering (strict boundary to guarantee no overlap with dock)
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(settings.gridColumns),
-                        contentPadding = PaddingValues(top = 8.dp, start = 8.dp, end = 8.dp, bottom = 170.dp),
+                        contentPadding = PaddingValues(top = 2.dp, start = 4.dp, end = 4.dp, bottom = 140.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         // App Grid Items
@@ -572,10 +614,46 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     }
 }
 
-        // --- iOS: Ultra-Premium Glassmorphism Dock with Swipe Up to Open Drawer ---
-        // Hidden when on the Widget screen (page 0) to maximize space for widgets, when Drawer is open, or when resizing icons
+        // --- iOS Page Indicator Dots (Home vs Secondary Screens) ---
         AnimatedVisibility(
-            visible = !isDrawerOpen && pagerState.currentPage != 0 && !isTouchResizeBarOpen,
+            visible = !isDrawerOpen && !isTouchResizeBarOpen,
+            enter = fadeIn(tween(200)),
+            exit = fadeOut(tween(150)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = if (pagerState.currentPage == 1) 116.dp else 24.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.28f))
+                    .padding(horizontal = 9.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(3) { index ->
+                    val isSelected = pagerState.currentPage == index
+                    Box(
+                        modifier = Modifier
+                            .size(if (isSelected) 8.dp else 5.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected) Color.White else Color.White.copy(alpha = 0.40f)
+                            )
+                            .clickable {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                            }
+                    )
+                }
+            }
+        }
+
+        // --- iOS: Ultra-Premium Glassmorphism Dock with Swipe Up to Open Drawer ---
+        // Displayed on Main Home screen (page 1), hidden when on secondary screens or drawer open
+        AnimatedVisibility(
+            visible = !isDrawerOpen && pagerState.currentPage == 1 && !isTouchResizeBarOpen,
             enter = fadeIn(tween(220)) + slideInVertically(
                 initialOffsetY = { it },
                 animationSpec = spring(stiffness = Spring.StiffnessMediumLow)

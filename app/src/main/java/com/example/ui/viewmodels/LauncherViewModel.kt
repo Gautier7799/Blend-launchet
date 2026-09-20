@@ -56,13 +56,13 @@ data class LauncherSettings(
     val showQuickControlsWidget: Boolean = true,
     val showWeatherGlanceWidget: Boolean = false,
     val showIosHomeWidgets: Boolean = true,
-    val widgetPlacement: String = "secondary", // "secondary" (الواجهة الثانوية), "home" (الرئيسية), "both" (كلاهما)
+    val widgetPlacement: String = "both", // "secondary" (الواجهة الثانوية), "home" (الرئيسية), "both" (كلاهما)
     val glassIcons: Boolean = true, // كل الأيقونات زجاج مع blur
     val iosWidgetStyle: String = "pair", // "pair" or "quad_battery"
     val iosWidgetCity: String = "", // empty means auto-detect from device location/region
-    val showWidgetLabels: Boolean = true,
+    val showWidgetLabels: Boolean = false,
     val showTopBarWidgets: Boolean = false,
-    val widgetTopSpacingDp: Int = 26, // lower the widget from top edge/status bar
+    val widgetTopSpacingDp: Int = 0, // Widgets rise directly to top under status bar
     val widgetOrder: List<String> = listOf("battery", "music", "tasks", "shortcuts", "controls"),
     val wallpaperType: String = "emerald", // "system", "emerald", "dark_amoled", "twilight", "ocean", "glass", "custom"
     val customWallpaperUri: String? = null,
@@ -153,13 +153,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             showQuickControlsWidget = prefs.getBoolean("show_quick_controls_widget", true),
             showWeatherGlanceWidget = prefs.getBoolean("show_weather_glance_widget", false),
             showIosHomeWidgets = prefs.getBoolean("show_ios_home_widgets", true),
-            widgetPlacement = prefs.getString("widget_placement", "secondary") ?: "secondary",
+            widgetPlacement = prefs.getString("widget_placement", "both") ?: "both",
             glassIcons = prefs.getBoolean("glass_icons", true),
             iosWidgetStyle = prefs.getString("ios_widget_style", "pair") ?: "pair",
             iosWidgetCity = prefs.getString("ios_widget_city", "") ?: "",
-            showWidgetLabels = prefs.getBoolean("show_widget_labels", true),
-            showTopBarWidgets = prefs.getBoolean("show_top_bar_widgets", false),
-            widgetTopSpacingDp = prefs.getInt("widget_top_spacing", 26),
+            showWidgetLabels = prefs.getBoolean("show_widget_labels", false),
+            showTopBarWidgets = false,
+            widgetTopSpacingDp = prefs.getInt("widget_top_spacing", 0),
             widgetOrder = prefs.getString("widget_order", null)?.split(",")?.filter { it.isNotBlank() }
                 ?: listOf("battery", "music", "tasks", "shortcuts", "controls"),
             wallpaperType = prefs.getString("wallpaper_type", "emerald") ?: "emerald",
