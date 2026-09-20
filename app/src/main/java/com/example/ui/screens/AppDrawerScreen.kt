@@ -133,7 +133,6 @@ fun AppDrawer(
     // Frosted Glass styling matching iOS App Library with full Dynamic Day (Jour) and Night (Nuit) adaptation
     val drawerBgColor = if (isDarkTheme) Color(0xFF0C0E15) else Color(0xFFF2F2F7)
     val drawerBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.18f) else Color.Black.copy(alpha = 0.08f)
-    val handleColor = if (isDarkTheme) Color.White.copy(alpha = 0.40f) else Color.Black.copy(alpha = 0.25f)
     val pillBgColor = if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.White
     val pillBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.08f)
     val iconTint = if (isDarkTheme) Color.White.copy(alpha = 0.85f) else Color(0xFF3C3C43)
@@ -142,11 +141,26 @@ fun AppDrawer(
     val searchPlaceholderColor = if (isDarkTheme) Color.White.copy(alpha = 0.60f) else Color(0xFF8E8E93)
 
     val gridState = rememberLazyGridState()
+    var pullDownDelta by remember { mutableFloatStateOf(0f) }
     val drawerNestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 // When dragging downward at the top of the app list, smoothly slide down to home screen
-                if (available.y > 22f && gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0) {
+                if (gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0 && available.y > 0f) {
+                    pullDownDelta += available.y
+                    if (pullDownDelta > 15f) {
+                        pullDownDelta = 0f
+                        onClose()
+                        return Offset(0f, available.y)
+                    }
+                } else if (available.y < 0f) {
+                    pullDownDelta = 0f
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 8f && gridState.firstVisibleItemIndex == 0) {
                     onClose()
                     return Offset(0f, available.y)
                 }
@@ -173,12 +187,12 @@ fun AppDrawer(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
-            // Drag handle at top (tap or swipe down anywhere on header to dismiss to home screen)
+            // Invisible touch dismiss & downward swipe gesture zone (line removed per user request)
             var headerDragY by remember { mutableFloatStateOf(0f) }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp, bottom = 8.dp)
+                    .height(28.dp)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -188,29 +202,20 @@ fun AppDrawer(
                         detectVerticalDragGestures(
                             onDragStart = { headerDragY = 0f },
                             onDragEnd = {
-                                if (headerDragY > 15f) onClose()
+                                if (headerDragY > 10f) onClose()
                                 headerDragY = 0f
                             },
                             onDragCancel = { headerDragY = 0f },
                             onVerticalDrag = { change, dragAmount ->
                                 headerDragY += dragAmount
-                                if (headerDragY > 20f) {
+                                if (headerDragY > 12f) {
                                     change.consume()
                                     onClose()
                                 }
                             }
                         )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(38.dp)
-                        .height(4.5.dp)
-                        .clip(CircleShape)
-                        .background(handleColor)
-                )
-            }
+                    }
+            )
 
             // --- iOS App Library Pill Search Bar ---
             Surface(
@@ -311,7 +316,9 @@ fun AppDrawer(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(settings.gridColumns),
                     contentPadding = PaddingValues(top = 6.dp, bottom = 80.dp),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .nestedScroll(drawerNestedScrollConnection)
                 ) {
                     items(
                         items = filteredApps,
