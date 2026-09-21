@@ -136,6 +136,74 @@ object SystemPermissionsHelper {
     }
 
     /**
+     * Checks if overlay permission (Draw over other apps) is granted.
+     */
+    fun isOverlayPermissionGranted(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Settings.canDrawOverlays(context)
+        } else {
+            true
+        }
+    }
+
+    /**
+     * Opens system settings to grant overlay permission.
+     */
+    fun openOverlaySettings(context: Context) {
+        try {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:${context.packageName}")
+            ).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            try {
+                val fallback = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(fallback)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    /**
+     * Checks if system write settings permission is granted.
+     */
+    fun isWriteSettingsGranted(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Settings.System.canWrite(context)
+        } else {
+            true
+        }
+    }
+
+    /**
+     * Opens system settings to grant write settings permission.
+     */
+    fun openWriteSettings(context: Context) {
+        try {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                Uri.parse("package:${context.packageName}")
+            ).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            try {
+                val fallback = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(fallback)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    /**
      * Opens application settings details where user can manage all permissions and defaults.
      */
     fun openAppDetailsSettings(context: Context) {

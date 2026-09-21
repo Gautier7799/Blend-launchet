@@ -67,6 +67,7 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -113,6 +114,8 @@ import com.example.ui.screens.IosHomeWidgetsRow
 import com.example.ui.screens.LauncherSettingsBottomSheet
 import com.example.ui.screens.ManageHomeWidgetsBottomSheet
 import com.example.ui.screens.MinusOneScreen
+import com.example.ui.screens.WallpaperBackground
+import com.example.ui.screens.WallpaperPickerBottomSheet
 import com.example.ui.screens.MusicPlayerCard
 import com.example.ui.screens.TasksCard
 import com.example.ui.screens.TopWidgetsBar
@@ -320,6 +323,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
 
     var isTouchResizeBarOpen by remember { mutableStateOf(false) }
     var isWidgetEditMode by remember { mutableStateOf(false) }
+    var isWallpaperPickerOpen by remember { mutableStateOf(false) }
     var showPinchHud by remember { mutableStateOf(false) }
     var pinchZoomLevel by remember { mutableFloatStateOf(settings.iconSizeDp.toFloat()) }
 
@@ -365,45 +369,10 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // --- 1. Dynamic Day / Night Blurred Atmosphere Canvas ---
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(bgTopColor, bgMidColor, bgBottomColor)
-                    )
-                )
-        )
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            // Ambient Sun / Moon Glow Orb
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(ambientGlowColor, Color.Transparent),
-                    center = Offset(size.width * 0.75f, size.height * 0.22f),
-                    radius = size.width * 0.85f
-                )
-            )
-            // Soft Secondary Nebula / Horizon Glow
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        (if (isNightTime) Color(0xFF6D28D9) else Color(0xFF93C5FD)).copy(alpha = 0.22f),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.20f, size.height * 0.70f),
-                    radius = size.width * 0.75f
-                )
-            )
-        }
-        // Frosted blur glass scrim
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    if (isNightTime) Color.Black.copy(alpha = 0.16f)
-                    else Color.White.copy(alpha = 0.10f)
-                )
+        // --- 1. Wallpaper Background (Free System Wallpaper, Calibrated Blur & Dimming) ---
+        WallpaperBackground(
+            settings = settings,
+            modifier = Modifier.fillMaxSize()
         )
 
         // Background gesture detector (placed behind everything)
@@ -459,7 +428,12 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                                     if (settings.hapticFeedback) {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     }
-                                    viewModel.expandNotificationPanel(context)
+                                    val screenWidth = context.resources.displayMetrics.widthPixels
+                                    if (settings.controlCenterEnabled && change.position.x > screenWidth * 0.55f) {
+                                        isControlCenterOpen = true
+                                    } else {
+                                        viewModel.expandNotificationPanel(context)
+                                    }
                                     accumulatedDrag = 0f
                                 } else if (accumulatedDrag > 30f && isDrawerOpen) {
                                     change.consume()
@@ -509,32 +483,6 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             } else {
                 // Main Home Screen Content (Page 1)
                 Box(modifier = Modifier.fillMaxSize()) {
-                    // Top Right iOS 18 Control Center Indicator Pill
-                    if (settings.controlCenterEnabled) {
-                        Surface(
-                            shape = CircleShape,
-                            color = if (isNightTime) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.50f),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(
-                                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 6.dp,
-                                    end = 16.dp
-                                )
-                                .size(width = 38.dp, height = 24.dp)
-                                .clickable { isControlCenterOpen = true }
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(width = 16.dp, height = 3.dp)
-                                        .clip(CircleShape)
-                                        .background(if (isNightTime) Color.White.copy(alpha = 0.85f) else Color(0xFF1C1C1E).copy(alpha = 0.75f))
-                                )
-                            }
-                        }
-                    }
-
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -851,47 +799,55 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                         }
                     }
                     .shadow(
-                        elevation = if (isNightTime) 14.dp else 18.dp,
+                        elevation = if (isNightTime) 12.dp else 10.dp,
                         shape = RoundedCornerShape(32.dp),
-                        spotColor = if (isNightTime) Color.Black.copy(alpha = 0.5f) else Color(0xFF1E3A8A).copy(alpha = 0.22f),
-                        ambientColor = if (isNightTime) Color.Black.copy(alpha = 0.25f) else Color(0xFF0F172A).copy(alpha = 0.12f)
+                        spotColor = Color.Black.copy(alpha = if (isNightTime) 0.35f else 0.12f),
+                        ambientColor = Color.Black.copy(alpha = if (isNightTime) 0.18f else 0.05f)
                     )
                     .clip(RoundedCornerShape(32.dp))
                     .background(
                         Brush.verticalGradient(
                             colors = if (isNightTime) {
                                 listOf(
-                                    Color(0xFF2C2C2E).copy(alpha = (settings.dockOpacity + 0.25f).coerceIn(0.50f, 0.85f)),
-                                    Color(0xFF1C1C1E).copy(alpha = (settings.dockOpacity + 0.15f).coerceIn(0.40f, 0.75f))
+                                    Color(0xFF2C2C2E).copy(alpha = (settings.dockOpacity * 0.40f + 0.35f).coerceIn(0.35f, 0.75f)),
+                                    Color(0xFF1C1C1E).copy(alpha = (settings.dockOpacity * 0.35f + 0.25f).coerceIn(0.25f, 0.65f))
                                 )
                             } else {
                                 listOf(
-                                    Color(0xFFFFFFFF).copy(alpha = (settings.dockOpacity + 0.45f).coerceIn(0.68f, 0.94f)),
-                                    Color(0xFFF1F5F9).copy(alpha = (settings.dockOpacity + 0.35f).coerceIn(0.55f, 0.86f)),
-                                    Color(0xFFE2E8F0).copy(alpha = (settings.dockOpacity + 0.25f).coerceIn(0.45f, 0.75f))
+                                    Color.White.copy(alpha = (settings.dockOpacity * 0.40f + 0.26f).coerceIn(0.22f, 0.50f)),
+                                    Color.White.copy(alpha = (settings.dockOpacity * 0.28f + 0.14f).coerceIn(0.14f, 0.36f))
                                 )
                             }
                         )
                     )
-                    .border(
-                        width = 1.2.dp,
-                        brush = if (isNightTime) {
-                            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.25f), Color.White.copy(alpha = 0.08f)))
-                        } else {
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.White.copy(alpha = 0.95f),
-                                    Color.White.copy(alpha = 0.40f)
-                                )
+                    .then(
+                        if (settings.showDockLines) {
+                            Modifier.border(
+                                width = 0.8.dp,
+                                brush = if (isNightTime) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.22f),
+                                            Color.White.copy(alpha = 0.06f)
+                                        )
+                                    )
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.75f),
+                                            Color.White.copy(alpha = 0.18f)
+                                        )
+                                    )
+                                },
+                                shape = RoundedCornerShape(32.dp)
                             )
-                        },
-                        shape = RoundedCornerShape(32.dp)
+                        } else Modifier
                     )
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // Specular Glass Glare overlay for daytime iOS Frosted Glass Dock
-                if (!isNightTime) {
+                if (!isNightTime && settings.showDockLines) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -899,8 +855,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             .background(
                                 Brush.verticalGradient(
                                     listOf(
-                                        Color.White.copy(alpha = 0.40f),
-                                        Color.White.copy(alpha = 0.05f),
+                                        Color.White.copy(alpha = 0.28f),
+                                        Color.White.copy(alpha = 0.04f),
                                         Color.Transparent
                                     )
                                 )
@@ -1099,6 +1055,61 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             )
         }
 
+        // --- Top Right iOS 18 Control Center Trigger Handle (Above all layers) ---
+        if (settings.controlCenterEnabled && !isDrawerOpen && !isReorderingMode) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .zIndex(60f)
+                    .padding(
+                        top = maxOf(WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), 12.dp) + 4.dp,
+                        end = 14.dp
+                    )
+                    .size(width = 54.dp, height = 48.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(bounded = false, radius = 24.dp),
+                        onClick = {
+                            if (settings.hapticFeedback) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                            isControlCenterOpen = true
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (isNightTime) Color.White.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.75f),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isNightTime) Color.White.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.90f)
+                    ),
+                    shadowElevation = 4.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Centre de Contrôle iOS 18",
+                            tint = if (isNightTime) Color.White else Color(0xFF1C1C1E),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(12.dp)
+                                .height(3.dp)
+                                .clip(CircleShape)
+                                .background(if (isNightTime) Color.White.copy(alpha = 0.9f) else Color(0xFF1C1C1E).copy(alpha = 0.8f))
+                        )
+                    }
+                }
+            }
+        }
+
         // --- Launcher Settings Sheet ---
         if (isSettingsOpen) {
             LauncherSettingsBottomSheet(
@@ -1109,6 +1120,15 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                     isSettingsOpen = false
                     isManageWidgetsOpen = true
                 }
+            )
+        }
+
+        // --- Wallpaper Picker Sheet ---
+        if (isWallpaperPickerOpen) {
+            WallpaperPickerBottomSheet(
+                settings = settings,
+                onUpdateSettings = { viewModel.updateSettings(it) },
+                onDismissRequest = { isWallpaperPickerOpen = false }
             )
         }
 

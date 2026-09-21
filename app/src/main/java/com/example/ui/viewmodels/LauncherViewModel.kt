@@ -75,9 +75,10 @@ data class LauncherSettings(
     val showTopBarWidgets: Boolean = false,
     val widgetTopSpacingDp: Int = 0, // Widgets rise directly to top under status bar
     val widgetOrder: List<String> = listOf("notifications", "battery", "music", "tasks", "shortcuts", "controls"),
-    val wallpaperType: String = "emerald", // "system", "emerald", "dark_amoled", "twilight", "ocean", "glass", "custom"
+    val wallpaperType: String = "system", // "system", "emerald", "dark_amoled", "twilight", "ocean", "glass", "custom"
     val customWallpaperUri: String? = null,
-    val wallpaperDim: Float = 0.15f,
+    val wallpaperDim: Float = 0.10f,
+    val wallpaperBlurDp: Int = 0, // 0 to 40dp blur calibration
     val controlCenterEnabled: Boolean = true
 )
 
@@ -189,9 +190,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             widgetTopSpacingDp = prefs.getInt("widget_top_spacing", 0),
             widgetOrder = prefs.getString("widget_order", null)?.split(",")?.filter { it.isNotBlank() }
                 ?: listOf("notifications", "battery", "music", "tasks", "shortcuts", "controls"),
-            wallpaperType = prefs.getString("wallpaper_type", "emerald") ?: "emerald",
+            wallpaperType = prefs.getString("wallpaper_type", "system") ?: "system",
             customWallpaperUri = prefs.getString("custom_wallpaper_uri", null),
-            wallpaperDim = prefs.getFloat("wallpaper_dim", 0.15f),
+            wallpaperDim = prefs.getFloat("wallpaper_dim", 0.10f),
+            wallpaperBlurDp = prefs.getInt("wallpaper_blur_dp", 0),
             iconColorMode = prefs.getString("icon_color_mode", "default") ?: "default",
             iconTintColorHex = prefs.getString("icon_tint_color_hex", "#007AFF") ?: "#007AFF",
             controlCenterEnabled = prefs.getBoolean("control_center_enabled", true)
@@ -285,6 +287,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putString("wallpaper_type", newSettings.wallpaperType)
             .putString("custom_wallpaper_uri", newSettings.customWallpaperUri)
             .putFloat("wallpaper_dim", newSettings.wallpaperDim)
+            .putInt("wallpaper_blur_dp", newSettings.wallpaperBlurDp)
             .putString("icon_color_mode", newSettings.iconColorMode)
             .putString("icon_tint_color_hex", newSettings.iconTintColorHex)
             .putBoolean("control_center_enabled", newSettings.controlCenterEnabled)
@@ -701,6 +704,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun isPostNotificationsGranted(context: Context): Boolean =
         SystemPermissionsHelper.isPostNotificationsGranted(context)
+
+    fun isOverlayPermissionGranted(context: Context): Boolean =
+        SystemPermissionsHelper.isOverlayPermissionGranted(context)
+
+    fun openOverlaySettings(context: Context) {
+        SystemPermissionsHelper.openOverlaySettings(context)
+    }
+
+    fun isWriteSettingsGranted(context: Context): Boolean =
+        SystemPermissionsHelper.isWriteSettingsGranted(context)
+
+    fun openWriteSettings(context: Context) {
+        SystemPermissionsHelper.openWriteSettings(context)
+    }
 
     fun openAppDetailsSettings(context: Context) {
         SystemPermissionsHelper.openAppDetailsSettings(context)

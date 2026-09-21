@@ -126,9 +126,7 @@ fun LauncherSettingsBottomSheet(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { 
-                                val intent = Intent(Intent.ACTION_SET_WALLPAPER)
-                                context.startActivity(Intent.createChooser(intent, "Choisir un fond d'écran"))
-                                onDismissRequest()
+                                isWallpaperPickerOpen = true
                             }
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -150,13 +148,13 @@ fun LauncherSettingsBottomSheet(
                         Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Fonds d'écran & Arrière-plans",
+                                text = "Fonds d'écran & Flou calibré",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Changer le fond d'écran du système",
+                                text = "Fond Système, effet verre dépoli (Blur) & photos personnalisées",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -905,6 +903,69 @@ fun LauncherSettingsBottomSheet(
                         checked = settings.hideDrawerHeader,
                         onCheckedChange = { viewModel.updateSettings(settings.copy(hideDrawerHeader = it)) }
                     )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Control Center iOS 18 Toggle
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Tune,
+                        title = "Centre de Contrôle iOS 18",
+                        subtitle = "Bouton d'accès rapide dans la barre d'état et glissement depuis le coin supérieur droit",
+                        checked = settings.controlCenterEnabled,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(controlCenterEnabled = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Quick access to Wallpaper & Calibrated Blur
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { isWallpaperPickerOpen = true }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.BlurOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Fond Système libre & Flou calibré",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Flou: ${if (settings.wallpaperBlurDp == 0) "Net (0 dp)" else "${settings.wallpaperBlurDp} dp"} • Mode: ${if (settings.wallpaperType == "system") "Système" else settings.wallpaperType}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -920,6 +981,8 @@ fun LauncherSettingsBottomSheet(
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
                     val isDefault = remember { viewModel.isDefaultLauncher(context) }
+                    val isOverlay = remember { viewModel.isOverlayPermissionGranted(context) }
+                    val isWriteSettings = remember { viewModel.isWriteSettingsGranted(context) }
                     val isNotifAccess = remember { viewModel.isNotificationAccessGranted(context) }
                     val isBatteryIgnored = remember { viewModel.isBatteryOptimizationIgnored(context) }
                     val isAccessibility = remember { viewModel.isAccessibilityServiceEnabled() }
@@ -933,6 +996,36 @@ fun LauncherSettingsBottomSheet(
                         isGranted = isDefault,
                         statusText = if (isDefault) "Par défaut" else "Définir",
                         onClick = { viewModel.openDefaultLauncherSettings(context) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // 2. Overlay / Draw over other apps (Control Center & Floating gestures)
+                    PermissionStatusItem(
+                        icon = Icons.Default.Layers,
+                        title = "Superposition sur d'autres applications",
+                        subtitle = if (isOverlay) "Autorisation accordée pour le Centre de Contrôle" else "Requis pour ouvrir le Centre de Contrôle par-dessus d'autres applications",
+                        isGranted = isOverlay,
+                        statusText = if (isOverlay) "Accordée" else "Configurer",
+                        onClick = { viewModel.openOverlaySettings(context) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // 3. Write Settings (Brightness & Display controls)
+                    PermissionStatusItem(
+                        icon = Icons.Default.Tune,
+                        title = "Modifier les paramètres système",
+                        subtitle = if (isWriteSettings) "Luminosité et affichage configurables" else "Requis pour régler la luminosité de l'écran depuis le Centre de Contrôle",
+                        isGranted = isWriteSettings,
+                        statusText = if (isWriteSettings) "Accordée" else "Configurer",
+                        onClick = { viewModel.openWriteSettings(context) }
                     )
 
                     HorizontalDivider(
@@ -1102,6 +1195,14 @@ fun LauncherSettingsBottomSheet(
                 }
             }
         }
+    }
+
+    if (isWallpaperPickerOpen) {
+        WallpaperPickerBottomSheet(
+            settings = settings,
+            onUpdateSettings = { viewModel.updateSettings(it) },
+            onDismissRequest = { isWallpaperPickerOpen = false }
+        )
     }
 }
 

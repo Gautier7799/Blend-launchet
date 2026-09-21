@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import android.app.WallpaperManager
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -20,15 +22,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.drawable.toBitmap
 import coil.compose.AsyncImage
 import com.example.ui.viewmodels.LauncherSettings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class WallpaperPreset(
     val id: String,
@@ -38,6 +46,12 @@ data class WallpaperPreset(
 )
 
 val WALLPAPER_PRESETS = listOf(
+    WallpaperPreset(
+        id = "system",
+        name = "Fond Système",
+        colors = listOf(Color(0xFF2563EB), Color(0xFF1E3A8A)),
+        isSystem = true
+    ),
     WallpaperPreset(
         id = "emerald",
         name = "Émeraude Sombre",
@@ -62,12 +76,6 @@ val WALLPAPER_PRESETS = listOf(
         id = "glass",
         name = "Graphite Givré",
         colors = listOf(Color(0xFF1E232A), Color(0xFF2E3640), Color(0xFF14171C))
-    ),
-    WallpaperPreset(
-        id = "system",
-        name = "Fond Système",
-        colors = listOf(Color(0xFF2B2B2B), Color(0xFF1A1A1A)),
-        isSystem = true
     )
 )
 
@@ -76,6 +84,31 @@ fun WallpaperBackground(
     settings: LauncherSettings,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    var systemBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(settings.wallpaperType) {
+        if (settings.wallpaperType == "system") {
+            withContext(Dispatchers.IO) {
+                try {
+                    val wallpaperManager = WallpaperManager.getInstance(context)
+                    val drawable = wallpaperManager.drawable
+                    if (drawable != null) {
+                        systemBitmap = drawable.toBitmap()
+                    }
+                } catch (_: Exception) {
+                    systemBitmap = null
+                }
+            }
+        }
+    }
+
+    val blurModifier = if (settings.wallpaperBlurDp > 0) {
+        Modifier.blur(settings.wallpaperBlurDp.dp)
+    } else {
+        Modifier
+    }
+
     Box(modifier = modifier) {
         when {
             settings.wallpaperType == "custom" && !settings.customWallpaperUri.isNullOrBlank() -> {
@@ -83,16 +116,47 @@ fun WallpaperBackground(
                     model = Uri.parse(settings.customWallpaperUri),
                     contentDescription = "Fond d'écran personnalisé",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(blurModifier)
                 )
+            }
+            settings.wallpaperType == "system" -> {
+                if (systemBitmap != null) {
+                    Image(
+                        bitmap = systemBitmap!!.asImageBitmap(),
+                        contentDescription = "Fond d'écran système",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(blurModifier)
+                    )
+                } else {
+                    // Fallback to elegant clean deep blue gradient
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(blurModifier)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color(0xFF1E293B),
+                                        Color(0xFF0F172A),
+                                        Color(0xFF020617)
+                                    )
+                                )
+                            )
+                    )
+                }
             }
             settings.wallpaperType == "emerald" -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .then(blurModifier)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(
+                                listOf(
                                     Color(0xFF133623),
                                     Color(0xFF1A4731),
                                     Color(0xFF0D2418)
@@ -105,12 +169,13 @@ fun WallpaperBackground(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .then(blurModifier)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0xFF0E1015),
-                                    Color(0xFF161922),
-                                    Color(0xFF08090C)
+                                listOf(
+                                    Color(0xFF07090E),
+                                    Color(0xFF0F1117),
+                                    Color(0xFF050608)
                                 )
                             )
                         )
@@ -120,9 +185,10 @@ fun WallpaperBackground(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .then(blurModifier)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(
+                                listOf(
                                     Color(0xFF2D1644),
                                     Color(0xFF45215C),
                                     Color(0xFF150A22)
@@ -135,9 +201,10 @@ fun WallpaperBackground(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .then(blurModifier)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(
+                                listOf(
                                     Color(0xFF0E2943),
                                     Color(0xFF19456B),
                                     Color(0xFF071727)
@@ -150,9 +217,10 @@ fun WallpaperBackground(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .then(blurModifier)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(
+                                listOf(
                                     Color(0xFF1E2329),
                                     Color(0xFF2D353F),
                                     Color(0xFF13171C)
@@ -162,17 +230,25 @@ fun WallpaperBackground(
                 )
             }
             else -> {
-                // System Wallpaper / Transparent
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Transparent)
+                        .then(blurModifier)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0xFF1E293B),
+                                    Color(0xFF0F172A),
+                                    Color(0xFF020617)
+                                )
+                            )
+                        )
                 )
             }
         }
 
         // Optional Dimming overlay for readability
-        if (settings.wallpaperType != "system" && settings.wallpaperDim > 0f) {
+        if (settings.wallpaperDim > 0f) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -412,20 +488,130 @@ fun WallpaperPickerBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Dimming slider if not system wallpaper
-            if (settings.wallpaperType != "system") {
-                Text(
-                    text = "Assombrissement pour lisibilité: ${(settings.wallpaperDim * 100).toInt()}%",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Slider(
-                    value = settings.wallpaperDim,
-                    onValueChange = { onUpdateSettings(settings.copy(wallpaperDim = it)) },
-                    valueRange = 0f..0.6f,
-                    steps = 5,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            // Calibrated Blur Slider (fond d ecran libre de systeme qualibre blur)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.BlurOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Calibrage du flou (Blur)",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Effet verre dépoli iOS sur le fond d'écran",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                text = if (settings.wallpaperBlurDp == 0) "Net (0 dp)" else "${settings.wallpaperBlurDp} dp",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Slider(
+                        value = settings.wallpaperBlurDp.toFloat(),
+                        onValueChange = { onUpdateSettings(settings.copy(wallpaperBlurDp = it.toInt())) },
+                        valueRange = 0f..40f,
+                        steps = 7,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("0 (Net)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Flou équilibré (15 dp)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Flou profond (40 dp)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Dimming slider
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.BrightnessMedium,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Assombrissement du fond",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Améliore la lisibilité des icônes et widgets",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                text = "${(settings.wallpaperDim * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Slider(
+                        value = settings.wallpaperDim,
+                        onValueChange = { onUpdateSettings(settings.copy(wallpaperDim = it)) },
+                        valueRange = 0f..0.6f,
+                        steps = 5,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }
