@@ -313,6 +313,42 @@ fun AppActionBottomSheet(
                     viewModel.openAppInfo(context, app.packageName)
                 }
             )
+
+            val isLocked = viewModel.isAppLocked(app.packageName)
+            val isHidden = viewModel.isAppHidden(app.packageName)
+
+            // Lock / Unlock App
+            ActionItemRow(
+                icon = if (isLocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                title = if (isLocked) "Déverrouiller l'application" else "Verrouiller avec code PIN 🔒",
+                tint = if (isLocked) Color(0xFF34C759) else Color(0xFFFF9500),
+                onClick = {
+                    viewModel.toggleAppLock(app.packageName)
+                    onDismissRequest()
+                }
+            )
+
+            // Hide / Unhide App
+            ActionItemRow(
+                icon = if (isHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                title = if (isHidden) "Afficher dans le tiroir d'applications" else "Masquer du tiroir d'applications 👁️",
+                tint = MaterialTheme.colorScheme.tertiary,
+                onClick = {
+                    viewModel.toggleAppHide(app.packageName)
+                    onDismissRequest()
+                }
+            )
+
+            // Add to Large Folder (2x2)
+            ActionItemRow(
+                icon = Icons.Default.FolderSpecial,
+                title = "Ajouter à un Grand Dossier (2x2) 📁",
+                tint = Color(0xFF007AFF),
+                onClick = {
+                    viewModel.createOrAddToFolder(app.packageName, "Favoris")
+                    onDismissRequest()
+                }
+            )
         }
     }
 }

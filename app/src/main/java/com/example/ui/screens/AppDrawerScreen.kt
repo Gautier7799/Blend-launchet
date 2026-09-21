@@ -93,6 +93,7 @@ enum class DrawerDisplayMode {
 fun AppDrawer(
     apps: List<AppItem>,
     settings: LauncherSettings,
+    hiddenPackages: Set<String> = emptySet(),
     notificationCounts: Map<String, Int> = emptyMap(),
     isDarkTheme: Boolean = isSystemInDarkTheme(),
     onAppClick: (String) -> Unit,
@@ -105,17 +106,21 @@ fun AppDrawer(
     var displayMode by remember { mutableStateOf(DrawerDisplayMode.IOS_BOXES) }
     var expandedCategory by remember { mutableStateOf<Pair<AppCategoryInfo, List<AppItem>>?>(null) }
 
+    val visibleApps = remember(apps, hiddenPackages) {
+        apps.filter { it.packageName !in hiddenPackages }
+    }
+
     // Instant search filtering
-    val filteredApps = remember(searchQuery, apps) {
-        if (searchQuery.isBlank()) apps
-        else apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+    val filteredApps = remember(searchQuery, visibleApps) {
+        if (searchQuery.isBlank()) visibleApps
+        else visibleApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
     }
 
     // Cached iOS smart category groupings
-    val categorizedApps = remember(apps) {
+    val categorizedApps = remember(visibleApps) {
         val map = mutableMapOf<String, MutableList<AppItem>>()
         categoryMetadata.forEach { map[it.id] = mutableListOf() }
-        for (app in apps) {
+        for (app in visibleApps) {
             val list = map[app.category] ?: map["other"]!!
             list.add(app)
         }

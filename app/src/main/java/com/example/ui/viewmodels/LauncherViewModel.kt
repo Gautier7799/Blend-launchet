@@ -30,12 +30,20 @@ data class LauncherTask(
     val isDone: Boolean = false
 )
 
+data class LargeFolderModel(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val title: String,
+    val packageNames: List<String> = emptyList()
+)
+
 data class LauncherSettings(
     val iconSizeDp: Int = 60,
     val showLabels: Boolean = true,
     val gridColumns: Int = 4,
     val dockCount: Int = 4,
     val themedIcons: Boolean = false,
+    val iconColorMode: String = "default", // "default", "dark", "tinted"
+    val iconTintColorHex: String = "#007AFF", // iOS Blue default
     val dockOpacity: Float = 0.35f,
     val doubleTapToSleep: Boolean = true,
     val dynamicIslandEnabled: Boolean = false,
@@ -69,7 +77,8 @@ data class LauncherSettings(
     val widgetOrder: List<String> = listOf("notifications", "battery", "music", "tasks", "shortcuts", "controls"),
     val wallpaperType: String = "emerald", // "system", "emerald", "dark_amoled", "twilight", "ocean", "glass", "custom"
     val customWallpaperUri: String? = null,
-    val wallpaperDim: Float = 0.15f
+    val wallpaperDim: Float = 0.15f,
+    val controlCenterEnabled: Boolean = true
 )
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -182,7 +191,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 ?: listOf("notifications", "battery", "music", "tasks", "shortcuts", "controls"),
             wallpaperType = prefs.getString("wallpaper_type", "emerald") ?: "emerald",
             customWallpaperUri = prefs.getString("custom_wallpaper_uri", null),
-            wallpaperDim = prefs.getFloat("wallpaper_dim", 0.15f)
+            wallpaperDim = prefs.getFloat("wallpaper_dim", 0.15f),
+            iconColorMode = prefs.getString("icon_color_mode", "default") ?: "default",
+            iconTintColorHex = prefs.getString("icon_tint_color_hex", "#007AFF") ?: "#007AFF",
+            controlCenterEnabled = prefs.getBoolean("control_center_enabled", true)
         )
     }
 
@@ -273,7 +285,141 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             .putString("wallpaper_type", newSettings.wallpaperType)
             .putString("custom_wallpaper_uri", newSettings.customWallpaperUri)
             .putFloat("wallpaper_dim", newSettings.wallpaperDim)
+            .putString("icon_color_mode", newSettings.iconColorMode)
+            .putString("icon_tint_color_hex", newSettings.iconTintColorHex)
+            .putBoolean("control_center_enabled", newSettings.controlCenterEnabled)
             .apply()
+    }
+
+    // --- App Lock & Hidden Apps State ---
+    private val _hiddenAppPackages = MutableStateFlow<Set<String>>(loadHiddenAppPackages())
+    val hiddenAppPackages: StateFlow<Set<String>> = _hiddenAppPackages.asStateFlow()
+
+    private val _lockedAppPackages = MutableStateFlow<Set<String>>(loadLockedAppPackages())
+    val lockedAppPackages: StateFlow<Set<String>> = _lockedAppPackages.asStateFlow()
+
+    private val _appLockPin = MutableStateFlow<String>(prefs.getString("app_lock_pin", "1234") ?: "1234")
+    val appLockPin: StateFlow<String> = _appLockPin.asStateFlow()
+
+    private fun loadHiddenAppPackages(): Set<String> {
+        val raw = prefs.getString("hidden_app_packages", null) ?: return emptySet()
+        return raw.split(",").filter { it.isNotBlank() }.toSet()
+    }
+
+    private fun saveHiddenAppPackages(set: Set<String>) {
+        _hiddenAppPackages.value = set
+        prefs.edit().putString("hidden_app_packages", set.joinToString(",")).apply()
+    }
+
+    private fun loadLockedAppPackages(): Set<String> {
+        val raw = prefs.getString("locked_app_packages", null) ?: return emptySet()
+        return raw.split(",").filter { it.isNotBlank() }.toSet()
+    }
+
+    private fun saveLockedAppPackages(set: Set<String>) {
+        _lockedAppPackages.value = set
+        prefs.edit().putString("locked_app_packages", set.joinToString(",")).apply()
+    }
+
+    fun isAppHidden(packageName: String): Boolean = _hiddenAppPackages.value.contains(packageName)
+    fun isAppLocked(packageName: String): Boolean = _lockedAppPackages.value.contains(packageName)
+
+    fun toggleHideApp(packageName: String) {
+        val current = _hiddenAppPackages.value.toMutableSet()
+        if (current.contains(packageName)) {
+            current.remove(packageName)
+        } else {
+            current.add(packageName)
+        }
+        saveHiddenAppPackages(current)
+    }
+
+    fun toggleLockApp(packageName: String) {
+        val current = _lockedAppPackages.value.toMutableSet()
+        if (current.contains(packageName)) {
+            current.remove(packageName)
+        } else {
+            current.add(packageName)
+        }
+        saveLockedAppPackages(current)
+    }
+
+    fun setAppLockPin(pin: String) {
+        if (pin.length == 4 && pin.all { it.isDigit() }) {
+            _appLockPin.value = pin
+            prefs.edit().putString("app_lock_pin", pin).apply()
+        }
+    }
+
+    fun validatePin(pin: String): Boolean = _appLockPin.value == pin
+
+    // --- iOS Large Folders State ---
+    private val _largeFolders = MutableStateFlow<List<LargeFolderModel>>(loadLargeFolders())
+    val largeFolders: StateFlow<List<LargeFolderModel>> = _largeFolders.asStateFlow()
+
+    private fun loadLargeFolders(): List<LargeFolderModel> {
+        val raw = prefs.getString("large_folders_list", null) ?: return emptyList()
+        return try {
+            raw.split("|||").filter { it.isNotBlank() }.mapNotNull { folderStr ->
+                val parts = folderStr.split(":::")
+                if (parts.size >= 2) {
+                    val id = parts[0]
+                    val title = parts[1]
+                    val pkgs = if (parts.size >= 3 && parts[2].isNotBlank()) parts[2].split(",") else emptyList()
+                    LargeFolderModel(id = id, title = title, packageNames = pkgs)
+                } else null
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun saveLargeFolders(list: List<LargeFolderModel>) {
+        _largeFolders.value = list
+        val serialized = list.joinToString("|||") { "${it.id}:::${it.title}:::${it.packageNames.joinToString(",")}" }
+        prefs.edit().putString("large_folders_list", serialized).apply()
+    }
+
+    fun createLargeFolder(title: String, packages: List<String>) {
+        val newFolder = LargeFolderModel(title = title, packageNames = packages)
+        val updated = _largeFolders.value + newFolder
+        saveLargeFolders(updated)
+    }
+
+    fun deleteLargeFolder(folderId: String) {
+        val updated = _largeFolders.value.filter { it.id != folderId }
+        saveLargeFolders(updated)
+    }
+
+    fun addAppToLargeFolder(folderId: String, packageName: String) {
+        val updated = _largeFolders.value.map { folder ->
+            if (folder.id == folderId && !folder.packageNames.contains(packageName)) {
+                folder.copy(packageNames = folder.packageNames + packageName)
+            } else folder
+        }
+        saveLargeFolders(updated)
+    }
+
+    fun removeAppFromLargeFolder(folderId: String, packageName: String) {
+        val updated = _largeFolders.value.map { folder ->
+            if (folder.id == folderId) {
+                folder.copy(packageNames = folder.packageNames.filter { it != packageName })
+            } else folder
+        }
+        saveLargeFolders(updated)
+    }
+
+    fun removeAppFromFolder(folderId: String, packageName: String) = removeAppFromLargeFolder(folderId, packageName)
+
+    fun toggleAppLock(packageName: String) = toggleLockApp(packageName)
+    fun toggleAppHide(packageName: String) = toggleHideApp(packageName)
+    fun createOrAddToFolder(packageName: String, folderName: String = "Dossier") {
+        if (_largeFolders.value.isEmpty()) {
+            createLargeFolder(folderName, listOf(packageName))
+        } else {
+            val first = _largeFolders.value.first()
+            addAppToLargeFolder(first.id, packageName)
+        }
     }
 
     fun setIconSize(sizeDp: Int) {

@@ -17,8 +17,8 @@ android {
     applicationId = "com.aistudio.doccloudmanager.xbwztc"
     minSdk = 24
     targetSdk = 36
-    versionCode = 3
-    versionName = "2.0 (Final)"
+    versionCode = 4
+    versionName = "3.0 (Pro iOS)"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

@@ -1,11 +1,15 @@
 package com.example.ui.screens
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.BatteryManager
+import android.os.Environment
+import android.os.StatFs
 import android.provider.Settings
+import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -14,6 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -35,6 +40,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -47,6 +53,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.viewmodels.LauncherSettings
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Main Container for iOS 17 Home Screen Widgets
@@ -227,42 +236,101 @@ fun IosHomeWidgetsRow(
                         )
                     }
                     else -> {
-                        // Default: Pair of Square 2x2 Widgets (Weather + Battery)
+                        // iOS Smart Stacks (Weather/Calendar/Tasks & Battery/System/Health) with Vertical Swipe
+                        var leftStackIndex by remember { mutableIntStateOf(0) }
+                        var rightStackIndex by remember { mutableIntStateOf(0) }
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            // 1. iOS Weather Square Widget (2x2)
+                            // 1. Left Smart Stack (Weather / Calendar / Tasks)
                             Box(modifier = Modifier.weight(1f)) {
-                                IosWeatherSquareWidget(
-                                    weather = liveWeather,
-                                    showLabels = settings.showWidgetLabels,
-                                    onWeatherClick = {
-                                        if (!isEditMode) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            launchWeatherApp(context)
-                                        } else {
-                                            onToggleEditMode()
-                                        }
+                                IosSmartStackContainer(
+                                    totalCards = 3,
+                                    currentIndex = leftStackIndex,
+                                    onIndexChange = { leftStackIndex = it },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { cardIndex ->
+                                    when (cardIndex) {
+                                        0 -> IosWeatherSquareWidget(
+                                            weather = liveWeather,
+                                            showLabels = settings.showWidgetLabels,
+                                            onWeatherClick = {
+                                                if (!isEditMode) {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    launchWeatherApp(context)
+                                                } else {
+                                                    onToggleEditMode()
+                                                }
+                                            }
+                                        )
+                                        1 -> IosCalendarSquareWidget(
+                                            showLabels = settings.showWidgetLabels,
+                                            onClick = {
+                                                if (!isEditMode) {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    try {
+                                                        val intent = Intent(Intent.ACTION_MAIN).apply {
+                                                            addCategory(Intent.CATEGORY_APP_CALENDAR)
+                                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                        }
+                                                        context.startActivity(intent)
+                                                    } catch (_: Exception) {}
+                                                } else {
+                                                    onToggleEditMode()
+                                                }
+                                            }
+                                        )
+                                        else -> IosTasksSquareWidget(
+                                            showLabels = settings.showWidgetLabels,
+                                            onClick = {
+                                                if (isEditMode) onToggleEditMode()
+                                            }
+                                        )
                                     }
-                                )
+                                }
                             }
 
-                            // 2. iOS Battery Ring Square Widget (2x2)
+                            // 2. Right Smart Stack (Battery Ring / System Health / Battery Grid)
                             Box(modifier = Modifier.weight(1f)) {
-                                IosBatterySquareWidget(
-                                    batteryPercent = batteryPercent,
-                                    isCharging = isCharging,
-                                    showLabels = settings.showWidgetLabels,
-                                    onBatteryClick = {
-                                        if (!isEditMode) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            launchBatterySettings(context)
-                                        } else {
-                                            onToggleEditMode()
-                                        }
+                                IosSmartStackContainer(
+                                    totalCards = 2,
+                                    currentIndex = rightStackIndex,
+                                    onIndexChange = { rightStackIndex = it },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { cardIndex ->
+                                    when (cardIndex) {
+                                        0 -> IosBatterySquareWidget(
+                                            batteryPercent = batteryPercent,
+                                            isCharging = isCharging,
+                                            showLabels = settings.showWidgetLabels,
+                                            onBatteryClick = {
+                                                if (!isEditMode) {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    launchBatterySettings(context)
+                                                } else {
+                                                    onToggleEditMode()
+                                                }
+                                            }
+                                        )
+                                        else -> IosSystemHealthWidget(
+                                            showLabels = settings.showWidgetLabels,
+                                            onClick = {
+                                                if (!isEditMode) {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    try {
+                                                        context.startActivity(Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS).apply {
+                                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                        })
+                                                    } catch (_: Exception) {}
+                                                } else {
+                                                    onToggleEditMode()
+                                                }
+                                            }
+                                        )
                                     }
-                                )
+                                }
                             }
                         }
                     }
@@ -829,3 +897,423 @@ private fun launchBatterySettings(context: Context) {
         }
     }
 }
+
+/**
+ * iOS Smart Stack Container with Vertical Swipe & Pagination Dots
+ */
+@Composable
+fun IosSmartStackContainer(
+    totalCards: Int,
+    currentIndex: Int,
+    onIndexChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable (Int) -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    var dragAccumulator by remember { mutableFloatStateOf(0f) }
+
+    Box(
+        modifier = modifier
+            .pointerInput(totalCards, currentIndex) {
+                detectVerticalDragGestures(
+                    onDragStart = { dragAccumulator = 0f },
+                    onDragEnd = { dragAccumulator = 0f },
+                    onDragCancel = { dragAccumulator = 0f },
+                    onVerticalDrag = { change, dragAmount ->
+                        change.consume()
+                        dragAccumulator += dragAmount
+                        if (dragAccumulator < -40f) {
+                            // Swipe up -> Next card
+                            dragAccumulator = 0f
+                            val next = (currentIndex + 1) % totalCards
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onIndexChange(next)
+                        } else if (dragAccumulator > 40f) {
+                            // Swipe down -> Prev card
+                            dragAccumulator = 0f
+                            val prev = if (currentIndex > 0) currentIndex - 1 else totalCards - 1
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onIndexChange(prev)
+                        }
+                    }
+                )
+            }
+    ) {
+        // Active Widget Card
+        AnimatedContent(
+            targetState = currentIndex,
+            transitionSpec = {
+                if (targetState > initialState) {
+                    (slideInVertically { height -> height } + fadeIn()).togetherWith(slideOutVertically { height -> -height } + fadeOut())
+                } else {
+                    (slideInVertically { height -> -height } + fadeIn()).togetherWith(slideOutVertically { height -> height } + fadeOut())
+                }
+            },
+            label = "smart_stack_card"
+        ) { page ->
+            content(page)
+        }
+
+        // Vertical iOS Pagination Dots on the right edge
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 5.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.Black.copy(alpha = 0.20f))
+                .padding(horizontal = 2.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            for (i in 0 until totalCards) {
+                val isActive = i == currentIndex
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(if (isActive) 10.dp else 3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(if (isActive) Color.White else Color.White.copy(alpha = 0.35f))
+                )
+            }
+        }
+    }
+}
+
+/**
+ * iOS Calendar Square Widget (Card in Left Smart Stack)
+ */
+@Composable
+fun IosCalendarSquareWidget(
+    showLabels: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val dayOfWeek = remember { SimpleDateFormat("EEEE", Locale.getDefault()).format(Date()).replaceFirstChar { it.uppercase() } }
+    val dayOfMonth = remember { SimpleDateFormat("d", Locale.getDefault()).format(Date()) }
+    val monthName = remember { SimpleDateFormat("MMMM", Locale.getDefault()).format(Date()) }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .shadow(elevation = 10.dp, shape = RoundedCornerShape(26.dp), spotColor = Color.Black.copy(alpha = 0.3f))
+                .clip(RoundedCornerShape(26.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF2C2C2E).copy(alpha = 0.88f),
+                            Color(0xFF1C1C1E).copy(alpha = 0.94f)
+                        )
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(26.dp))
+                .clickable(onClick = onClick)
+                .padding(14.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Header: Day of Week in red iOS accent
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = dayOfWeek.uppercase(),
+                        color = Color(0xFFFF453A),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.40f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+
+                // Center: Big Day Number
+                Text(
+                    text = dayOfMonth,
+                    color = Color.White,
+                    fontSize = 44.sp,
+                    fontWeight = FontWeight.Light,
+                    lineHeight = 44.sp
+                )
+
+                // Bottom: Month and Event
+                Column {
+                    Text(
+                        text = monthName,
+                        color = Color.White.copy(alpha = 0.70f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Aucun événement prévu",
+                        color = Color.White.copy(alpha = 0.45f),
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        if (showLabels) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Calendrier",
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal
+            )
+        }
+    }
+}
+
+/**
+ * iOS Quick Tasks Square Widget (Card in Left Smart Stack)
+ */
+@Composable
+fun IosTasksSquareWidget(
+    showLabels: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .shadow(elevation = 10.dp, shape = RoundedCornerShape(26.dp), spotColor = Color.Black.copy(alpha = 0.3f))
+                .clip(RoundedCornerShape(26.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF2C2C2E).copy(alpha = 0.88f),
+                            Color(0xFF1C1C1E).copy(alpha = 0.94f)
+                        )
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(26.dp))
+                .clickable(onClick = onClick)
+                .padding(14.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Rappels",
+                        color = Color(0xFF007AFF),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Icon(
+                        imageVector = Icons.Default.CheckCircleOutline,
+                        contentDescription = null,
+                        tint = Color(0xFF007AFF),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, Color.White.copy(alpha = 0.5f), CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Organisation iOS",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, Color(0xFF34C759), CircleShape)
+                                .background(Color(0xFF34C759))
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Objectifs terminés",
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Text(
+                    text = "2 tâches en attente",
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 10.sp
+                )
+            }
+        }
+
+        if (showLabels) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Rappels",
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal
+            )
+        }
+    }
+}
+
+/**
+ * iOS System Health & Storage Widget (Card in Right Smart Stack)
+ */
+@Composable
+fun IosSystemHealthWidget(
+    showLabels: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var freeStorageGb by remember { mutableFloatStateOf(32.5f) }
+    var freeRamPercent by remember { mutableIntStateOf(65) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val stat = StatFs(Environment.getDataDirectory().path)
+            val availableBytes = stat.availableBlocksLong * stat.blockSizeLong
+            freeStorageGb = (availableBytes.toFloat() / (1024f * 1024f * 1024f))
+
+            val actManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            val memInfo = ActivityManager.MemoryInfo()
+            actManager?.getMemoryInfo(memInfo)
+            if (memInfo.totalMem > 0) {
+                freeRamPercent = ((memInfo.availMem.toFloat() / memInfo.totalMem.toFloat()) * 100).toInt()
+            }
+        } catch (_: Exception) {}
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .shadow(elevation = 10.dp, shape = RoundedCornerShape(26.dp), spotColor = Color.Black.copy(alpha = 0.3f))
+                .clip(RoundedCornerShape(26.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF2C2C2E).copy(alpha = 0.88f),
+                            Color(0xFF1C1C1E).copy(alpha = 0.94f)
+                        )
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(26.dp))
+                .clickable(onClick = onClick)
+                .padding(14.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Système",
+                        color = Color(0xFF34C759),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Icon(
+                        imageVector = Icons.Default.Memory,
+                        contentDescription = null,
+                        tint = Color(0xFF34C759),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "${freeStorageGb.toInt()} Go",
+                            color = Color.White,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Espace libre",
+                            color = Color.White.copy(alpha = 0.50f),
+                            fontSize = 10.sp
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "$freeRamPercent%",
+                            color = Color(0xFF34C759),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "RAM dispo",
+                            color = Color.White.copy(alpha = 0.50f),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+
+                Text(
+                    text = "Performance optimale",
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 10.sp
+                )
+            }
+        }
+
+        if (showLabels) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Stockage",
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal
+            )
+        }
+    }
+}
+

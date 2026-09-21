@@ -37,6 +37,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.example.ui.screens.IconResizeTouchBar
 import com.example.ui.screens.PinchZoomHudPill
+import com.example.ui.screens.IosControlCenterSheet
+import com.example.ui.screens.IosPasscodeDialog
+import com.example.ui.screens.IosLargeFolderItem
+import com.example.ui.screens.IosFolderDetailSheet
+import com.example.ui.viewmodels.LargeFolderModel
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -66,7 +74,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.semantics.Role
@@ -186,6 +193,10 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     val tasks by viewModel.tasks.collectAsState()
     val notificationCounts by viewModel.notificationCounts.collectAsState()
     val activeNotifications by viewModel.activeNotifications.collectAsState()
+    val hiddenApps by viewModel.hiddenAppPackages.collectAsState()
+    val lockedApps by viewModel.lockedAppPackages.collectAsState()
+    val appLockPin by viewModel.appLockPin.collectAsState()
+    val largeFolders by viewModel.largeFolders.collectAsState()
 
     var isDrawerOpen by remember { mutableStateOf(false) }
     var isSettingsOpen by remember { mutableStateOf(false) }
@@ -194,6 +205,20 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
     var isReorderingMode by remember { mutableStateOf(false) }
     var selectedActionApp by remember { mutableStateOf<AppItem?>(null) }
     var isAiAssistantOpen by remember { mutableStateOf(false) }
+    var isControlCenterOpen by remember { mutableStateOf(false) }
+    var isPasscodeDialogOpen by remember { mutableStateOf(false) }
+    var appPendingUnlock by remember { mutableStateOf<AppItem?>(null) }
+    var selectedFolderForDetail by remember { mutableStateOf<LargeFolderModel?>(null) }
+
+    // Safe app launch checking for App Lock (رمز المرور)
+    val launchAppSafely: (AppItem) -> Unit = { targetApp ->
+        if (viewModel.isAppLocked(targetApp.packageName)) {
+            appPendingUnlock = targetApp
+            isPasscodeDialogOpen = true
+        } else {
+            viewModel.launchApp(targetApp.packageName)
+        }
+    }
 
     // Location Permission launcher for real-time accurate weather sync ("ma position")
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -225,15 +250,25 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             selectedActionApp = null
             isAiAssistantOpen = false
             isReorderingMode = false
+            isControlCenterOpen = false
+            isPasscodeDialogOpen = false
+            selectedFolderForDetail = null
         }
     }
 
     // Android Back Handler: ensures back gesture/button dismisses open overlays smoothly
     BackHandler(
-        enabled = isDrawerOpen || isSettingsOpen || isAddAppsOpen || isManageWidgetsOpen ||
+        enabled = isControlCenterOpen || isPasscodeDialogOpen || selectedFolderForDetail != null ||
+                isDrawerOpen || isSettingsOpen || isAddAppsOpen || isManageWidgetsOpen ||
                 selectedActionApp != null || isAiAssistantOpen || isReorderingMode
     ) {
         when {
+            isPasscodeDialogOpen -> {
+                isPasscodeDialogOpen = false
+                appPendingUnlock = null
+            }
+            selectedFolderForDetail != null -> selectedFolderForDetail = null
+            isControlCenterOpen -> isControlCenterOpen = false
             selectedActionApp != null -> selectedActionApp = null
             isAiAssistantOpen -> isAiAssistantOpen = false
             isManageWidgetsOpen -> isManageWidgetsOpen = false
@@ -473,94 +508,145 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 )
             } else {
                 // Main Home Screen Content (Page 1)
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Top Right iOS 18 Control Center Indicator Pill
+                    if (settings.controlCenterEnabled) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (isNightTime) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.50f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(
+                                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 6.dp,
+                                    end = 16.dp
+                                )
+                                .size(width = 38.dp, height = 24.dp)
+                                .clickable { isControlCenterOpen = true }
                         ) {
-                            if (isReorderingMode) {
-                                isReorderingMode = false
+                            Box(contentAlignment = Alignment.Center) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = 16.dp, height = 3.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isNightTime) Color.White.copy(alpha = 0.85f) else Color(0xFF1C1C1E).copy(alpha = 0.75f))
+                                )
                             }
-                            if (isWidgetEditMode) {
-                                isWidgetEditMode = false
-                            }
-                        }
-                        .padding(
-                            top = run {
-                                val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-                                val cutoutTop = WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
-                                val safeTop = maxOf(statusBarTop, cutoutTop, 48.dp)
-                                if (settings.showIosHomeWidgets && (settings.widgetPlacement == "home" || settings.widgetPlacement == "both")) {
-                                    // Generous spacing safely below capsule island + user adjustment
-                                    safeTop + 18.dp + settings.widgetTopSpacingDp.dp
-                                } else {
-                                    safeTop + 24.dp
-                                }
-                            },
-                            start = 14.dp,
-                            end = 14.dp
-                        )
-                ) {
-                    // Top Widgets Area (iOS 17 Widgets: Weather + Battery ascending to top)
-                    if (!isReorderingMode) {
-                        if (settings.showIosHomeWidgets && (settings.widgetPlacement == "home" || settings.widgetPlacement == "both")) {
-                            IosHomeWidgetsRow(
-                                settings = settings,
-                                onOpenSettings = { isSettingsOpen = true },
-                                isEditMode = isWidgetEditMode,
-                                onToggleEditMode = { isWidgetEditMode = !isWidgetEditMode },
-                                onDeleteWidget = {
-                                    viewModel.updateSettings(settings.copy(showIosHomeWidgets = false))
-                                    isWidgetEditMode = false
-                                },
-                                onToggleStyle = {
-                                    val nextStyle = if (settings.iosWidgetStyle == "pair") "quad_battery" else "pair"
-                                    viewModel.updateSettings(settings.copy(iosWidgetStyle = nextStyle))
-                                },
-                                onLowerWidget = {
-                                    viewModel.setWidgetTopSpacing(settings.widgetTopSpacingDp + 8)
-                                },
-                                onRaiseWidget = {
-                                    viewModel.setWidgetTopSpacing(settings.widgetTopSpacingDp - 8)
-                                },
-                                onOpenTouchControls = { }
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
                         }
                     }
 
-                    // Home Screen Grid with dynamic reordering (strict boundary to guarantee no overlap with dock)
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(settings.gridColumns),
-                        contentPadding = PaddingValues(top = 2.dp, start = 4.dp, end = 4.dp, bottom = 140.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        // App Grid Items
-                itemsIndexed(
-                    items = homeApps,
-                    key = { _, app -> app.packageName }
-                ) { index, app ->
-                    ReorderableHomeAppItem(
-                        app = app,
-                        index = index,
-                        totalCount = homeApps.size,
-                        badgeCount = notificationCounts[app.packageName] ?: 0,
-                        isReordering = isReorderingMode,
-                        wobbleAngle = if (index % 2 == 0) wobbleAngle else -wobbleAngle,
-                        showLabel = settings.showLabels,
-                        showTextShadows = settings.showTextShadows,
-                        iconSize = settings.iconSizeDp.dp,
-                        themedIcon = settings.themedIcons,
-                        glassIcon = settings.glassIcons,
-                        onClick = {
-                            if (!isReorderingMode) {
-                                viewModel.launchApp(app.packageName)
-                            } else {
-                                isReorderingMode = false
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                if (isReorderingMode) {
+                                    isReorderingMode = false
+                                }
+                                if (isWidgetEditMode) {
+                                    isWidgetEditMode = false
+                                }
                             }
-                        },
+                            .padding(
+                                top = run {
+                                    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                                    val cutoutTop = WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
+                                    val safeTop = maxOf(statusBarTop, cutoutTop, 48.dp)
+                                    if (settings.showIosHomeWidgets && (settings.widgetPlacement == "home" || settings.widgetPlacement == "both")) {
+                                        // Generous spacing safely below capsule island + user adjustment
+                                        safeTop + 18.dp + settings.widgetTopSpacingDp.dp
+                                    } else {
+                                        safeTop + 24.dp
+                                    }
+                                },
+                                start = 14.dp,
+                                end = 14.dp
+                            )
+                    ) {
+                        // Top Widgets Area (iOS 17 Widgets: Weather + Battery ascending to top)
+                        if (!isReorderingMode) {
+                            if (settings.showIosHomeWidgets && (settings.widgetPlacement == "home" || settings.widgetPlacement == "both")) {
+                                IosHomeWidgetsRow(
+                                    settings = settings,
+                                    onOpenSettings = { isSettingsOpen = true },
+                                    isEditMode = isWidgetEditMode,
+                                    onToggleEditMode = { isWidgetEditMode = !isWidgetEditMode },
+                                    onDeleteWidget = {
+                                        viewModel.updateSettings(settings.copy(showIosHomeWidgets = false))
+                                        isWidgetEditMode = false
+                                    },
+                                    onToggleStyle = {
+                                        val nextStyle = if (settings.iosWidgetStyle == "pair") "quad_battery" else "pair"
+                                        viewModel.updateSettings(settings.copy(iosWidgetStyle = nextStyle))
+                                    },
+                                    onLowerWidget = {
+                                        viewModel.setWidgetTopSpacing(settings.widgetTopSpacingDp + 8)
+                                    },
+                                    onRaiseWidget = {
+                                        viewModel.setWidgetTopSpacing(settings.widgetTopSpacingDp - 8)
+                                    },
+                                    onOpenTouchControls = { }
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                            }
+                        }
+
+                        // Home Screen Grid with dynamic reordering (strict boundary to guarantee no overlap with dock)
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(settings.gridColumns),
+                            contentPadding = PaddingValues(top = 2.dp, start = 4.dp, end = 4.dp, bottom = 140.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            // 1. iOS Large Folders (2x2)
+                            items(
+                                items = largeFolders,
+                                key = { "large_folder_${it.id}" },
+                                span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }
+                            ) { folder ->
+                                IosLargeFolderItem(
+                                    folder = folder,
+                                    appsMap = appMap,
+                                    iconSize = settings.iconSizeDp.dp,
+                                    onAppClick = { pkg ->
+                                        val app = appMap[pkg]
+                                        if (app != null) {
+                                            launchAppSafely(app)
+                                        } else {
+                                            viewModel.launchApp(pkg)
+                                        }
+                                    },
+                                    onFolderOpen = { selectedFolderForDetail = folder }
+                                )
+                            }
+
+                            // 2. App Grid Items
+                            itemsIndexed(
+                                items = homeApps,
+                                key = { _, app -> app.packageName }
+                            ) { index, app ->
+                                ReorderableHomeAppItem(
+                                    app = app,
+                                    index = index,
+                                    totalCount = homeApps.size,
+                                    badgeCount = notificationCounts[app.packageName] ?: 0,
+                                    isReordering = isReorderingMode,
+                                    wobbleAngle = if (index % 2 == 0) wobbleAngle else -wobbleAngle,
+                                    showLabel = settings.showLabels,
+                                    showTextShadows = settings.showTextShadows,
+                                    iconSize = settings.iconSizeDp.dp,
+                                    themedIcon = settings.themedIcons,
+                                    glassIcon = settings.glassIcons,
+                                    iconColorMode = settings.iconColorMode,
+                                    tintColorHex = settings.iconTintColorHex,
+                                    onClick = {
+                                        if (!isReorderingMode) {
+                                            launchAppSafely(app)
+                                        } else {
+                                            isReorderingMode = false
+                                        }
+                                    },
                         onLongClick = {
                             if (!isReorderingMode) {
                                 if (settings.hapticFeedback) {
@@ -664,6 +750,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
         }
     }
 }
+}
 
         // --- iOS Page Indicator Dots (Home vs Secondary Screens) ---
         AnimatedVisibility(
@@ -764,9 +851,10 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                         }
                     }
                     .shadow(
-                        elevation = 14.dp,
+                        elevation = if (isNightTime) 14.dp else 18.dp,
                         shape = RoundedCornerShape(32.dp),
-                        spotColor = if (isNightTime) Color.Black.copy(alpha = 0.5f) else Color(0xFF1E3A8A).copy(alpha = 0.14f)
+                        spotColor = if (isNightTime) Color.Black.copy(alpha = 0.5f) else Color(0xFF1E3A8A).copy(alpha = 0.22f),
+                        ambientColor = if (isNightTime) Color.Black.copy(alpha = 0.25f) else Color(0xFF0F172A).copy(alpha = 0.12f)
                     )
                     .clip(RoundedCornerShape(32.dp))
                     .background(
@@ -778,20 +866,48 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                                 )
                             } else {
                                 listOf(
-                                    Color.White.copy(alpha = (settings.dockOpacity + 0.35f).coerceIn(0.55f, 0.88f)),
-                                    Color.White.copy(alpha = (settings.dockOpacity + 0.15f).coerceIn(0.35f, 0.65f))
+                                    Color(0xFFFFFFFF).copy(alpha = (settings.dockOpacity + 0.45f).coerceIn(0.68f, 0.94f)),
+                                    Color(0xFFF1F5F9).copy(alpha = (settings.dockOpacity + 0.35f).coerceIn(0.55f, 0.86f)),
+                                    Color(0xFFE2E8F0).copy(alpha = (settings.dockOpacity + 0.25f).coerceIn(0.45f, 0.75f))
                                 )
                             }
                         )
                     )
                     .border(
-                        width = 1.dp,
-                        color = if (isNightTime) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.75f),
+                        width = 1.2.dp,
+                        brush = if (isNightTime) {
+                            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.25f), Color.White.copy(alpha = 0.08f)))
+                        } else {
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.95f),
+                                    Color.White.copy(alpha = 0.40f)
+                                )
+                            )
+                        },
                         shape = RoundedCornerShape(32.dp)
                     )
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
+                // Specular Glass Glare overlay for daytime iOS Frosted Glass Dock
+                if (!isNightTime) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(32.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.40f),
+                                        Color.White.copy(alpha = 0.05f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -808,9 +924,11 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                             iconSize = (settings.iconSizeDp - 6).dp,
                             themedIcon = settings.themedIcons,
                             glassIcon = settings.glassIcons,
+                            iconColorMode = settings.iconColorMode,
+                            tintColorHex = settings.iconTintColorHex,
                             onClick = { 
                                 if (!isReorderingMode) {
-                                    viewModel.launchApp(app.packageName)
+                                    launchAppSafely(app)
                                 } else {
                                     isReorderingMode = false
                                 }
@@ -929,9 +1047,17 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             AppDrawer(
                 apps = apps,
                 settings = settings,
+                hiddenPackages = hiddenApps,
                 notificationCounts = notificationCounts,
                 isDarkTheme = isNightTime,
-                onAppClick = { viewModel.launchApp(it) },
+                onAppClick = { packageName ->
+                    val target = appMap[packageName]
+                    if (target != null) {
+                        launchAppSafely(target)
+                    } else {
+                        viewModel.launchApp(packageName)
+                    }
+                },
                 onAppLongClick = { selectedActionApp = it },
                 onClose = { isDrawerOpen = false },
                 onSettingsClick = { isSettingsOpen = true }
@@ -1044,6 +1170,46 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 onDismiss = { isTouchResizeBarOpen = false }
             )
         }
+
+        // --- iOS Control Center Sheet ---
+        IosControlCenterSheet(
+            isOpen = isControlCenterOpen,
+            onDismiss = { isControlCenterOpen = false }
+        )
+
+        // --- iOS Passcode Dialog for Locked Apps ---
+        IosPasscodeDialog(
+            isOpen = isPasscodeDialogOpen,
+            expectedPin = appLockPin,
+            onSuccess = {
+                isPasscodeDialogOpen = false
+                val target = appPendingUnlock
+                appPendingUnlock = null
+                if (target != null) {
+                    viewModel.launchApp(target.packageName)
+                }
+            },
+            onDismiss = {
+                isPasscodeDialogOpen = false
+                appPendingUnlock = null
+            }
+        )
+
+        // --- iOS Large Folder Detail Sheet ---
+        IosFolderDetailSheet(
+            folder = selectedFolderForDetail,
+            appsMap = appMap,
+            onDismiss = { selectedFolderForDetail = null },
+            onAppClick = { pkg ->
+                selectedFolderForDetail = null
+                val target = appMap[pkg]
+                if (target != null) {
+                    launchAppSafely(target)
+                } else {
+                    viewModel.launchApp(pkg)
+                }
+            }
+        )
     }
 }
 
@@ -1152,6 +1318,8 @@ fun GlassIconSquircle(
     iconSize: Dp,
     modifier: Modifier = Modifier,
     isGlass: Boolean = true,
+    colorMode: String = "default",
+    tintColorHex: String = "#007AFF",
     content: @Composable () -> Unit
 ) {
     if (!isGlass) {
@@ -1163,32 +1331,70 @@ fun GlassIconSquircle(
         }
     } else {
         val cornerRadius = (iconSize * 0.28f).coerceAtLeast(14.dp)
+        val tintColor = remember(tintColorHex) {
+            try {
+                Color(android.graphics.Color.parseColor(tintColorHex))
+            } catch (_: Exception) {
+                Color(0xFF007AFF)
+            }
+        }
+
+        val backgroundBrush = when (colorMode) {
+            "dark" -> Brush.verticalGradient(
+                listOf(
+                    Color(0xFF242730).copy(alpha = 0.94f),
+                    Color(0xFF14161C).copy(alpha = 0.98f)
+                )
+            )
+            "tinted" -> Brush.verticalGradient(
+                listOf(
+                    tintColor.copy(alpha = 0.32f),
+                    Color(0xFF13151D).copy(alpha = 0.94f)
+                )
+            )
+            else -> Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.30f),
+                    Color.White.copy(alpha = 0.10f)
+                )
+            )
+        }
+
+        val borderBrush = when (colorMode) {
+            "dark" -> Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.30f),
+                    Color.White.copy(alpha = 0.10f)
+                )
+            )
+            "tinted" -> Brush.verticalGradient(
+                listOf(
+                    tintColor.copy(alpha = 0.85f),
+                    tintColor.copy(alpha = 0.30f)
+                )
+            )
+            else -> Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.75f),
+                    Color.White.copy(alpha = 0.20f)
+                )
+            )
+        }
+
         Box(
             modifier = modifier
                 .size(iconSize)
                 .shadow(
                     elevation = 6.dp,
                     shape = RoundedCornerShape(cornerRadius),
-                    spotColor = Color.White.copy(alpha = 0.35f),
+                    spotColor = if (colorMode == "tinted") tintColor.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.35f),
                     ambientColor = Color.Black.copy(alpha = 0.20f)
                 )
                 .clip(RoundedCornerShape(cornerRadius))
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.30f),
-                            Color.White.copy(alpha = 0.10f)
-                        )
-                    )
-                )
+                .background(backgroundBrush)
                 .border(
                     width = 1.2.dp,
-                    brush = Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.75f),
-                            Color.White.copy(alpha = 0.20f)
-                        )
-                    ),
+                    brush = borderBrush,
                     shape = RoundedCornerShape(cornerRadius)
                 ),
             contentAlignment = Alignment.Center
@@ -1200,7 +1406,7 @@ fun GlassIconSquircle(
                     .background(
                         Brush.linearGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.36f),
+                                if (colorMode == "tinted") tintColor.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.36f),
                                 Color.Transparent
                             )
                         )
@@ -1230,6 +1436,8 @@ fun ReorderableHomeAppItem(
     iconSize: Dp,
     themedIcon: Boolean,
     glassIcon: Boolean = true,
+    iconColorMode: String = "default",
+    tintColorHex: String = "#007AFF",
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onMoveLeft: () -> Unit,
@@ -1245,7 +1453,22 @@ fun ReorderableHomeAppItem(
     val animatedOffsetX by animateFloatAsState(targetValue = visualOffsetX, label = "home_reorder_x")
     val animatedOffsetY by animateFloatAsState(targetValue = visualOffsetY, label = "home_reorder_y")
 
-    val themedColorFilter: ColorFilter? = null
+    val parsedTintColor = remember(tintColorHex) {
+        try {
+            Color(android.graphics.Color.parseColor(tintColorHex))
+        } catch (_: Exception) {
+            Color(0xFF007AFF)
+        }
+    }
+
+    val themedColorFilter: ColorFilter? = when (iconColorMode) {
+        "tinted" -> ColorFilter.tint(parsedTintColor, BlendMode.Modulate)
+        "dark" -> {
+            val matrix = ColorMatrix().apply { setToSaturation(0.70f) }
+            ColorFilter.colorMatrix(matrix)
+        }
+        else -> null
+    }
 
     Box(
         modifier = Modifier
@@ -1325,7 +1548,9 @@ fun ReorderableHomeAppItem(
             Box(contentAlignment = Alignment.TopEnd) {
                 GlassIconSquircle(
                     iconSize = iconSize,
-                    isGlass = glassIcon
+                    isGlass = glassIcon,
+                    colorMode = iconColorMode,
+                    tintColorHex = tintColorHex
                 ) {
                     if (app.iconBitmap != null) {
                         Image(
@@ -1406,6 +1631,8 @@ fun ReorderableDockAppItem(
     iconSize: Dp,
     themedIcon: Boolean,
     glassIcon: Boolean = true,
+    iconColorMode: String = "default",
+    tintColorHex: String = "#007AFF",
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onMoveLeft: () -> Unit,
@@ -1421,7 +1648,22 @@ fun ReorderableDockAppItem(
     val animatedOffsetX by animateFloatAsState(targetValue = visualOffsetX, label = "dock_reorder_x")
     val animatedOffsetY by animateFloatAsState(targetValue = visualOffsetY, label = "dock_reorder_y")
 
-    val themedColorFilter: ColorFilter? = null
+    val parsedTintColor = remember(tintColorHex) {
+        try {
+            Color(android.graphics.Color.parseColor(tintColorHex))
+        } catch (_: Exception) {
+            Color(0xFF007AFF)
+        }
+    }
+
+    val themedColorFilter: ColorFilter? = when (iconColorMode) {
+        "tinted" -> ColorFilter.tint(parsedTintColor, BlendMode.Modulate)
+        "dark" -> {
+            val matrix = ColorMatrix().apply { setToSaturation(0.70f) }
+            ColorFilter.colorMatrix(matrix)
+        }
+        else -> null
+    }
 
     Box(
         modifier = Modifier
@@ -1501,7 +1743,9 @@ fun ReorderableDockAppItem(
             Box(contentAlignment = Alignment.TopEnd) {
                 GlassIconSquircle(
                     iconSize = iconSize,
-                    isGlass = glassIcon
+                    isGlass = glassIcon,
+                    colorMode = iconColorMode,
+                    tintColorHex = tintColorHex
                 ) {
                     if (app.iconBitmap != null) {
                         Image(

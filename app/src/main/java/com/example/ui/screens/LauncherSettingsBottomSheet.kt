@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -227,6 +229,116 @@ fun LauncherSettingsBottomSheet(
                         subtitle = "Harmoniser les icônes avec la couleur du fond d'écran",
                         checked = settings.themedIcons,
                         onCheckedChange = { viewModel.updateSettings(settings.copy(themedIcons = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // iOS 18 Icon Tinting Mode Selector
+                    Text(
+                        text = "Style des icônes (iOS 18)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Standard, Sombre, ou Teinté monochrome avec votre couleur préférée",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            "default" to "Standard",
+                            "dark" to "Sombre",
+                            "tinted" to "Teinté"
+                        ).forEach { (mode, label) ->
+                            val isSelected = settings.iconColorMode == mode
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { viewModel.updateSettings(settings.copy(iconColorMode = mode)) },
+                                label = { Text(label, fontSize = 12.sp) },
+                                leadingIcon = if (isSelected) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                } else null,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    if (settings.iconColorMode == "tinted") {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Palette de teinte iOS 18 :",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            listOf(
+                                "#007AFF" to Color(0xFF007AFF), // Blue
+                                "#AF52DE" to Color(0xFFAF52DE), // Purple
+                                "#34C759" to Color(0xFF34C759), // Green
+                                "#FF9500" to Color(0xFFFF9500), // Orange
+                                "#FF2D55" to Color(0xFFFF2D55), // Red
+                                "#FFCC00" to Color(0xFFFFCC00), // Yellow
+                                "#8E8E93" to Color(0xFF8E8E93)  // Slate
+                            ).forEach { (hex, color) ->
+                                val isSelected = settings.iconTintColorHex == hex
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(color)
+                                        .border(
+                                            width = if (isSelected) 3.dp else 1.dp,
+                                            color = if (isSelected) Color.White else Color.Transparent,
+                                            shape = CircleShape
+                                        )
+                                        .clickable {
+                                            viewModel.updateSettings(settings.copy(iconTintColorHex = hex))
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // Control Center Toggle
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Tune,
+                        title = "Centre de Contrôle iOS",
+                        subtitle = "Glissement depuis le haut pour les curseurs luminosité & volume",
+                        checked = settings.controlCenterEnabled,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(controlCenterEnabled = it)) }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
 
                     HorizontalDivider(
@@ -974,14 +1086,14 @@ fun LauncherSettingsBottomSheet(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "Blend Launcher v2.0 (Final)",
+                                text = "Blend Launcher v3.0 (Pro iOS)",
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.height(3.dp))
                             Text(
-                                text = "Édition Finale • iOS Fluidity & Zero Bloat",
+                                text = "Édition Pro • iOS 18 Stacks, Large Folders & Control Center",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
