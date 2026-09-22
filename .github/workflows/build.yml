@@ -1,58 +1,53 @@
-name: Build Blend Launcher APK
+name: Build Android APK
 
 on:
   push:
     branches: [ "main", "master" ]
-  workflow_dispatch:
+  pull_request:
+    branches: [ "main", "master" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
 
-    - name: Prepare Gradle and Keystore
-      run: |
-        # التأكد من وجود gradlew
-        if [ ! -f "gradlew" ]; then
-          wget -q https://raw.githubusercontent.com/cortinico/kotlin-android-template/main/gradlew
-          chmod +x gradlew
-          mkdir -p gradle/wrapper
-          wget -q https://raw.githubusercontent.com/cortinico/kotlin-android-template/main/gradle/wrapper/gradle-wrapper.jar -O gradle/wrapper/gradle-wrapper.jar
-        else
-          chmod +x gradlew
-        fi
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
-        # ضبط إصدار Gradle ليكون 9.3.1 المطلوب للـ Android Gradle Plugin
-        mkdir -p gradle/wrapper
-        cat << 'EOF' > gradle/wrapper/gradle-wrapper.properties
-        distributionBase=GRADLE_USER_HOME
-        distributionPath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-9.3.1-bin.zip
-        networkTimeout=10000
-        validateDistributionUrl=true
-        zipStoreBase=GRADLE_USER_HOME
-        zipStorePath=wrapper/dists
-        EOF
+      # إنشاء ملف google-services.json وهمي لمنع توقف البناء
+      - name: Create Dummy google-services.json
+        run: |
+          mkdir -p app
+          cat <<EOF > app/google-services.json
+          {
+            "project_info": {
+              "project_number": "1234567890",
+              "project_id": "dummy-project",
+              "storage_bucket": "dummy-project.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:1234567890:android:1234567890",
+                  "android_client_info": {
+                    "package_name": "com.example.launcher"
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
 
-        # إنشاء ملف debug.keystore وتوزيعه
-        keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-        mkdir -p app
-        cp debug.keystore app/debug.keystore
-
-    - name: Build with Gradle
-      run: ./gradlew assembleDebug -Pandroid.useAndroidX=true -Djava.awt.headless=true --no-daemon
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: BlendLauncher-APK
-        path: app/build/outputs/apk/debug/*.apk
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
