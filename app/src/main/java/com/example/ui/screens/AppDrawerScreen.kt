@@ -189,7 +189,24 @@ fun AppDrawer(
         shadowElevation = 16.dp
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Specular glass highlight gradient for translucent depth
+            // 1. Blurred wallpaper background (Flou / Blur 38dp) - exact home screen wallpaper without any home icons showing!
+            WallpaperBackground(
+                settings = settings,
+                overrideBlurDp = 38,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // 2. Translucent frosted glass veil over the blurred wallpaper for iOS App Library contrast
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        if (isDarkTheme) Color(0xFF0F1420).copy(alpha = 0.55f)
+                        else Color(0xFFF8FAFC).copy(alpha = 0.55f)
+                    )
+            )
+
+            // 3. Specular glass highlight gradient for translucent depth
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

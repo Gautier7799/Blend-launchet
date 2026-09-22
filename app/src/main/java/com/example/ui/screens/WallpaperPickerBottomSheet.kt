@@ -82,7 +82,8 @@ val WALLPAPER_PRESETS = listOf(
 @Composable
 fun WallpaperBackground(
     settings: LauncherSettings,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    overrideBlurDp: Int? = null
 ) {
     val context = LocalContext.current
     var systemBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -103,8 +104,9 @@ fun WallpaperBackground(
         }
     }
 
-    val blurModifier = if (settings.wallpaperBlurDp > 0) {
-        Modifier.blur(settings.wallpaperBlurDp.dp)
+    val effectiveBlurDp = overrideBlurDp ?: settings.wallpaperBlurDp
+    val blurModifier = if (effectiveBlurDp > 0) {
+        Modifier.blur(effectiveBlurDp.dp)
     } else {
         Modifier
     }
