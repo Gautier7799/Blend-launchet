@@ -1400,6 +1400,7 @@ fun ManageHomeWidgetsBottomSheet(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.weight(1f, fill = false)
                 ) {
+                    val isArabic = java.util.Locale.getDefault().language == "ar"
                     Box(
                         modifier = Modifier
                             .size(38.dp)
@@ -1409,13 +1410,13 @@ fun ManageHomeWidgetsBottomSheet(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Widgets,
-                            contentDescription = "Icône gestion des widgets",
+                            contentDescription = if (isArabic) "إدارة عناصر الواجهة" else "Icône gestion des widgets",
                             tint = Color(0xFF1E211E),
                             modifier = Modifier.size(22.dp)
                         )
                     }
                     Text(
-                        text = "Gérer les widgets",
+                        text = if (isArabic) "إدارة عناصر الواجهة" else "Gérer les widgets",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -1423,6 +1424,7 @@ fun ManageHomeWidgetsBottomSheet(
                     )
                 }
 
+                val isArabic = java.util.Locale.getDefault().language == "ar"
                 TextButton(
                     onClick = onResetOrder,
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
@@ -1434,7 +1436,7 @@ fun ManageHomeWidgetsBottomSheet(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Rétablir",
+                        text = if (isArabic) "إعادة تعيين" else "Rétablir",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,

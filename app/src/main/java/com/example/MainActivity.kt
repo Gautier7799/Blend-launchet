@@ -130,7 +130,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        applyImmersiveMode()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(
@@ -142,6 +142,8 @@ class MainActivity : ComponentActivity() {
                 android.graphics.Color.TRANSPARENT
             )
         )
+
+        applyImmersiveMode()
 
         setContent {
             MyApplicationTheme {
@@ -164,7 +166,6 @@ class MainActivity : ComponentActivity() {
         }
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
-        WindowCompat.setDecorFitsSystemWindows(window, false)
         val insetsController = WindowCompat.getInsetsController(window, window.decorView)
         insetsController.hide(WindowInsetsCompat.Type.systemBars())
         insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE

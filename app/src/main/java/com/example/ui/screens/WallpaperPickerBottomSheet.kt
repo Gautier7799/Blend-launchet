@@ -312,25 +312,27 @@ fun WallpaperPickerBottomSheet(
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
+                    val isArabic = java.util.Locale.getDefault().language == "ar"
                     Column {
                         Text(
-                            text = "Fonds d'écran & Arrière-plans",
+                            text = if (isArabic) "الخلفيات والتنسيقات" else "Fonds d'écran & Arrière-plans",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Personnalisez l'ambiance visuelle du lanceur",
+                            text = if (isArabic) "خصص المظهر واللمسة البصرية للانشر" else "Personnalisez l'ambiance visuelle du lanceur",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
+                val isArabic = java.util.Locale.getDefault().language == "ar"
                 IconButton(onClick = onDismissRequest) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Fermer",
+                        contentDescription = if (isArabic) "إغلاق" else "Fermer",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -356,6 +358,7 @@ fun WallpaperPickerBottomSheet(
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val isArabic = java.util.Locale.getDefault().language == "ar"
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -365,7 +368,7 @@ fun WallpaperPickerBottomSheet(
                     ) {
                         Icon(
                             imageVector = Icons.Default.AddPhotoAlternate,
-                            contentDescription = "Galerie",
+                            contentDescription = if (isArabic) "المعرض" else "Galerie",
                             tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(24.dp)
                         )
@@ -373,13 +376,17 @@ fun WallpaperPickerBottomSheet(
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Choisir une photo de la galerie",
+                            text = if (isArabic) "اختيار صورة من المعرض" else "Choisir une photo de la galerie",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (settings.wallpaperType == "custom") "Photo sélectionnée active" else "Utilisez vos propres photos et images",
+                            text = if (settings.wallpaperType == "custom") {
+                                if (isArabic) "الصورة المحددة مفعلة حالياً" else "Photo sélectionnée active"
+                            } else {
+                                if (isArabic) "استخدم صورك وتصميماتك الخاصة كخلفية" else "Utilisez vos propres photos et images"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

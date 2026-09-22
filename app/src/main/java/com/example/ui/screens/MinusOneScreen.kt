@@ -235,12 +235,13 @@ fun MinusOneScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
+                    val isArabic = java.util.Locale.getDefault().language == "ar"
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            text = "Widgets iOS 27",
+                            text = if (isArabic) "عناصر واجهة iOS" else "Widgets iOS 27",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -252,7 +253,7 @@ fun MinusOneScreen(
                                 border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f))
                             ) {
                                 Text(
-                                    text = "Modification",
+                                    text = if (isArabic) "تعديل" else "Modification",
                                     color = Color(0xFFFCA5A5),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
@@ -262,7 +263,11 @@ fun MinusOneScreen(
                         }
                     }
                     Text(
-                        text = if (isEditMode) "Glissez pour magnétiser ou touchez (-) pour supprimer" else "Appui long ou touchez Modifier pour réorganiser",
+                        text = if (isEditMode) {
+                            if (isArabic) "اسحب لإعادة الترتيب أو اضغط (-) للحذف" else "Glissez pour magnétiser ou touchez (-) pour supprimer"
+                        } else {
+                            if (isArabic) "اضغط مطولاً أو اضغط تعديل لإعادة الترتيب" else "Appui long ou touchez Modifier pour réorganiser"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.7f),
                         maxLines = 1,
@@ -276,6 +281,7 @@ fun MinusOneScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val isArabic = java.util.Locale.getDefault().language == "ar"
                     if (isEditMode) {
                         // "Done" Button
                         Button(
@@ -297,7 +303,7 @@ fun MinusOneScreen(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "Terminé", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(text = if (isArabic) "تم" else "Terminé", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     } else {
                         // 1. Restore Default Widgets Icon Button (Moved to Top as requested)
@@ -313,7 +319,7 @@ fun MinusOneScreen(
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.RestartAlt,
-                                    contentDescription = "Restaurer les widgets par défaut",
+                                    contentDescription = if (isArabic) "استعادة العناصر الافتراضية" else "Restaurer les widgets par défaut",
                                     tint = Color.White,
                                     modifier = Modifier.size(19.dp)
                                 )
@@ -330,7 +336,7 @@ fun MinusOneScreen(
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.Add,
-                                    contentDescription = "Ajouter un widget",
+                                    contentDescription = if (isArabic) "إضافة عنصر واجهة" else "Ajouter un widget",
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -354,12 +360,12 @@ fun MinusOneScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Tune,
-                                    contentDescription = "Modifier l'ordre des widgets",
+                                    contentDescription = if (isArabic) "تعديل ترتيب العناصر" else "Modifier l'ordre des widgets",
                                     tint = Color.White,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Text(
-                                    text = "Modifier",
+                                    text = if (isArabic) "تعديل" else "Modifier",
                                     color = Color.White,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium
