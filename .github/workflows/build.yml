@@ -19,12 +19,11 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      # إنشاء ملف google-services.json وهمي لمنع توقف البناء
+      # إنشاء ملف google-services.json وهمي لتفادي أخطاء المكونات المفقودة
       - name: Create Dummy google-services.json
         run: |
           mkdir -p app
@@ -49,5 +48,12 @@ jobs:
           }
           EOF
 
+      # التحقق من وجود gradlew وتوليده تلقائياً إن كان مفقوداً ثم البناء
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          if [ ! -f "./gradlew" ]; then
+            echo "gradlew not found, generating wrapper..."
+            gradle wrapper
+          fi
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
