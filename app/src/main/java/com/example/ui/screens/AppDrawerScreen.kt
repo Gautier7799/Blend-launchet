@@ -1,1090 +1,278 @@
-package com.example.ui.screens
+package com.gautier7799.blend.ui
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.provider.MediaStore
-import android.speech.RecognizerIntent
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import coil.compose.AsyncImage
-import com.example.R
-import com.example.domain.AppCategoryInfo
-import com.example.domain.AppItem
-import com.example.ui.viewmodels.LauncherSettings
 
-// Definitions for iOS-style categories
-private val categoryMetadata = listOf(
-    AppCategoryInfo("social", "التواصل", "Social", "💬", 1),
-    AppCategoryInfo("utilities", "الأدوات", "Utilities", "🛠️", 2),
-    AppCategoryInfo("productivity", "الإنتاجية", "Productivity", "💼", 3),
-    AppCategoryInfo("media", "الترفيه والوسائط", "Entertainment", "🎬", 4),
-    AppCategoryInfo("games", "الألعاب", "Games", "🎮", 5),
-    AppCategoryInfo("navigation", "الملاحة والسفر", "Travel", "🧭", 6),
-    AppCategoryInfo("shopping", "التسوق", "Shopping", "🛍️", 7),
-    AppCategoryInfo("browsing", "المعلومات", "Information", "🌐", 8),
-    AppCategoryInfo("other", "أخرى", "Other", "📦", 9)
+// 1. نماذج البيانات للتطبيق والمجلد
+data class DrawerAppItem(
+    val id: String,
+    val name: String,
+    val iconColor: Color = Color(0xFF1E88E5)
 )
 
-enum class DrawerDisplayMode {
-    IOS_BOXES,
-    ALL_APPS_GRID
-}
+data class DrawerCategory(
+    val id: String,
+    val name: String,
+    val apps: List<DrawerAppItem>
+)
 
+// 2. الواجهة الرئيسية لـ AppDrawer
 @Composable
 fun AppDrawer(
-    apps: List<AppItem>,
-    settings: LauncherSettings,
-    hiddenPackages: Set<String> = emptySet(),
-    notificationCounts: Map<String, Int> = emptyMap(),
-    isDarkTheme: Boolean = isSystemInDarkTheme(),
-    onAppClick: (String) -> Unit,
-    onAppLongClick: (AppItem) -> Unit,
-    onClose: () -> Unit,
-    onSettingsClick: () -> Unit
+    categories: List<DrawerCategory> = getSampleCategories(),
+    onAppClick: (DrawerAppItem) -> Unit = {},
+    onCategoryClick: (DrawerCategory) -> Unit = {}
 ) {
-    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
-    var displayMode by remember { mutableStateOf(DrawerDisplayMode.IOS_BOXES) }
-    var expandedCategory by remember { mutableStateOf<Pair<AppCategoryInfo, List<AppItem>>?>(null) }
 
-    val visibleApps = remember(apps, hiddenPackages) {
-        apps.filter { it.packageName !in hiddenPackages }
-    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFC2D6E3)) // لون الخلفية الفاتح المطابق للواجهة
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        // شريط البحث العلوي (App Library)
+        AppLibrarySearchBar(
+            query = searchQuery,
+            onQueryChange = { searchQuery = it }
+        )
 
-    // Instant search filtering
-    val filteredApps = remember(searchQuery, visibleApps) {
-        if (searchQuery.isBlank()) visibleApps
-        else visibleApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
-    }
+        Spacer(modifier = Modifier.height(16.dp))
 
-    // Cached iOS smart category groupings
-    val categorizedApps = remember(visibleApps) {
-        val map = mutableMapOf<String, MutableList<AppItem>>()
-        categoryMetadata.forEach { map[it.id] = mutableListOf() }
-        for (app in visibleApps) {
-            val list = map[app.category] ?: map["other"]!!
-            list.add(app)
-        }
-        categoryMetadata.mapNotNull { cat ->
-            val list = map[cat.id] ?: emptyList()
-            if (list.isNotEmpty()) cat to list else null
-        }
-    }
-
-    // Hardware/System back handler to smoothly close drawer
-    BackHandler(enabled = true) {
-        onClose()
-    }
-
-    // Frosted Glass styling matching iOS App Library with opaque blurred glassmorphism
-    // Solid background completely obscures home screen icons behind as requested: "اجعل لون الدرج التطبيقات flou خلفية حتى لا تظهر يقونات الواجهة الرئيسية"
-    val drawerBgColor = if (isDarkTheme) Color(0xFF141722) else Color(0xFFF6F8FC)
-    val drawerBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.40f)
-    val pillBgColor = if (isDarkTheme) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.35f)
-    val pillBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.45f)
-    val iconTint = if (isDarkTheme) Color.White.copy(alpha = 0.85f) else Color(0xFF3C3C43)
-    val appItemTextColor = if (isDarkTheme) Color.White else Color(0xFF1C1C1E)
-    val searchTextColor = if (isDarkTheme) Color.White else Color(0xFF1C1C1E)
-    val searchPlaceholderColor = if (isDarkTheme) Color.White.copy(alpha = 0.60f) else Color(0xFF8E8E93)
-
-    val gridState = rememberLazyGridState()
-    var pullDownDelta by remember { mutableFloatStateOf(0f) }
-    val drawerNestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // When dragging downward at the top of the app list, smoothly slide down to home screen
-                if (gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0 && available.y > 0f) {
-                    pullDownDelta += available.y
-                    if (pullDownDelta > 15f) {
-                        pullDownDelta = 0f
-                        onClose()
-                        return Offset(0f, available.y)
-                    }
-                } else if (available.y < 0f) {
-                    pullDownDelta = 0f
-                }
-                return Offset.Zero
-            }
-
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                if (available.y > 8f && gridState.firstVisibleItemIndex == 0) {
-                    onClose()
-                    return Offset(0f, available.y)
-                }
-                return Offset.Zero
+        // شبكة المجلدات والتصنيفات (العنصر 1 و 2 و 3)
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(categories) { category ->
+                CategoryFolderCard(
+                    category = category,
+                    onAppClick = onAppClick,
+                    onCategoryClick = { onCategoryClick(category) }
+                )
             }
         }
     }
+}
 
-    // Rounded drawer sheet with frosted blur styling
+// شريط البحث العلوي
+@Composable
+fun AppLibrarySearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit
+) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(top = 8.dp)
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)),
-        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-        color = drawerBgColor,
-        border = BorderStroke(1.2.dp, drawerBorderColor),
-        shadowElevation = 16.dp
+            .height(50.dp),
+        shape = RoundedCornerShape(25.dp),
+        color = Color.White.copy(alpha = 0.55f)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // 1. Blurred wallpaper background (Flou / Blur 38dp) - exact home screen wallpaper without any home icons showing!
-            WallpaperBackground(
-                settings = settings,
-                overrideBlurDp = 38,
-                modifier = Modifier.fillMaxSize()
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search",
+                tint = Color(0xFF4A5568),
+                modifier = Modifier.size(20.dp)
             )
-
-            // 2. Translucent frosted glass veil over the blurred wallpaper for iOS App Library contrast
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        if (isDarkTheme) Color(0xFF0F1420).copy(alpha = 0.55f)
-                        else Color(0xFFF8FAFC).copy(alpha = 0.55f)
-                    )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = if (query.isEmpty()) "App Library" else query,
+                color = Color(0xFF4A5568),
+                fontSize = 16.sp,
+                modifier = Modifier.weight(1f)
             )
-
-            // 3. Specular glass highlight gradient for translucent depth
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = if (isDarkTheme) {
-                                listOf(
-                                    Color.White.copy(alpha = 0.08f),
-                                    Color.White.copy(alpha = 0.02f),
-                                    Color.Transparent
-                                )
-                            } else {
-                                listOf(
-                                    Color.White.copy(alpha = 0.35f),
-                                    Color.White.copy(alpha = 0.10f),
-                                    Color.Transparent
-                                )
-                            }
-                        )
-                    )
+            Icon(
+                imageVector = Icons.Default.Mic,
+                contentDescription = "Voice Search",
+                tint = Color(0xFF4A5568),
+                modifier = Modifier.size(20.dp)
             )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
-            ) {
-            // Invisible touch dismiss & downward swipe gesture zone (line removed per user request)
-            var headerDragY by remember { mutableFloatStateOf(0f) }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(28.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { onClose() }
-                    )
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onDragStart = { headerDragY = 0f },
-                            onDragEnd = {
-                                if (headerDragY > 10f) onClose()
-                                headerDragY = 0f
-                            },
-                            onDragCancel = { headerDragY = 0f },
-                            onVerticalDrag = { change, dragAmount ->
-                                headerDragY += dragAmount
-                                if (headerDragY > 12f) {
-                                    change.consume()
-                                    onClose()
-                                }
-                            }
-                        )
-                    }
+            Spacer(modifier = Modifier.width(12.dp))
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Settings",
+                tint = Color(0xFF4A5568),
+                modifier = Modifier.size(20.dp)
             )
-
-            // --- iOS App Library Pill Search Bar ---
-            Surface(
-                shape = CircleShape,
-                color = pillBgColor,
-                border = BorderStroke(1.dp, pillBorderColor),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(46.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = iconTint,
-                        modifier = Modifier.size(19.dp)
-                    )
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    val searchPlaceholder = if (java.util.Locale.getDefault().language == "ar") "مكتبة التطبيقات" else "App Library"
-
-                    BasicTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        singleLine = true,
-                        textStyle = TextStyle(
-                            color = searchTextColor,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Normal
-                        ),
-                        cursorBrush = SolidColor(if (isDarkTheme) Color.White else Color(0xFF007AFF)),
-                        modifier = Modifier.weight(1f),
-                        decorationBox = { innerTextField ->
-                            Box(contentAlignment = Alignment.CenterStart) {
-                                if (searchQuery.isEmpty()) {
-                                    Text(
-                                        searchPlaceholder,
-                                        color = searchPlaceholderColor,
-                                        fontSize = 15.sp
-                                    )
-                                }
-                                innerTextField()
-                            }
-                        }
-                    )
-
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(
-                            onClick = { searchQuery = "" },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Effacer la recherche",
-                                tint = iconTint,
-                                modifier = Modifier.size(17.dp)
-                            )
-                        }
-                    }
-
-                    IconButton(
-                        onClick = { launchVoiceSearch(context) },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Mic,
-                            contentDescription = "Recherche vocale",
-                            tint = iconTint,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onSettingsClick,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Paramètres",
-                            tint = iconTint,
-                            modifier = Modifier.size(19.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // --- Content View: Search Results OR iOS App Library Category Boxes ---
-            if (searchQuery.isNotEmpty()) {
-                // Search Results Grid
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(settings.gridColumns),
-                    contentPadding = PaddingValues(top = 6.dp, bottom = 80.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .nestedScroll(drawerNestedScrollConnection)
-                ) {
-                    items(
-                        items = filteredApps,
-                        key = { it.packageName },
-                        contentType = { "app_icon" }
-                    ) { app ->
-                        AppIconItem(
-                            app = app,
-                            badgeCount = notificationCounts[app.packageName] ?: 0,
-                            textColor = appItemTextColor,
-                            shadow = true,
-                            showLabel = settings.showLabels,
-                            iconSize = settings.iconSizeDp.dp,
-                            onClick = { onAppClick(app.packageName) },
-                            onLongClick = { onAppLongClick(app) }
-                        )
-                    }
-                }
-            } else {
-                // --- Pure iOS App Library Category Boxes (2 columns) ---
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    state = gridState,
-                    contentPadding = PaddingValues(top = 4.dp, bottom = 90.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .nestedScroll(drawerNestedScrollConnection)
-                ) {
-                    items(
-                        items = categorizedApps,
-                        key = { it.first.id },
-                        contentType = { "category_box" }
-                    ) { (category, categoryAppList) ->
-                        IosCategoryBox(
-                            category = category,
-                            apps = categoryAppList,
-                            isDarkTheme = isDarkTheme,
-                            notificationCounts = notificationCounts,
-                            onAppClick = onAppClick,
-                            onAppLongClick = onAppLongClick,
-                            onExpandCategory = {
-                                expandedCategory = category to categoryAppList
-                            }
-                        )
-                    }
-                }
-            }
         }
     }
 }
 
-    // --- Expanded iOS Category Folder Dialog ---
-    expandedCategory?.let { (cat, catApps) ->
-        CategoryFolderDialog(
-            category = cat,
-            apps = catApps,
-            isDarkTheme = isDarkTheme,
-            notificationCounts = notificationCounts,
-            onAppClick = {
-                expandedCategory = null
-                onAppClick(it)
-            },
-            onAppLongClick = {
-                expandedCategory = null
-                onAppLongClick(it)
-            },
-            onDismissRequest = { expandedCategory = null }
-        )
-    }
-}
-
-// --- iOS Style Category Box Component ---
+// تصميم المجلد الداخلي (مثل Social, Productivity, Travel)
 @Composable
-fun IosCategoryBox(
-    category: AppCategoryInfo,
-    apps: List<AppItem>,
-    isDarkTheme: Boolean,
-    notificationCounts: Map<String, Int>,
-    onAppClick: (String) -> Unit,
-    onAppLongClick: (AppItem) -> Unit,
-    onExpandCategory: () -> Unit
+fun CategoryFolderCard(
+    category: DrawerCategory,
+    onAppClick: (DrawerAppItem) -> Unit,
+    onCategoryClick: () -> Unit
 ) {
-    // Soft translucent frosted card matching iOS App Library category folders
-    val boxBgColor = if (isDarkTheme) Color(0xFF242834).copy(alpha = 0.58f) else Color.White.copy(alpha = 0.70f)
-    val boxBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.85f)
-    val currentLocale = java.util.Locale.getDefault().language
-    val categoryTitle = if (currentLocale == "ar") category.titleAr else category.titleEn
-
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Surface(
-            shape = RoundedCornerShape(26.dp),
-            color = boxBgColor,
-            border = BorderStroke(1.dp, boxBorderColor),
-            shadowElevation = if (isDarkTheme) 0.dp else 2.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(26.dp))
-                .clickable { onExpandCategory() }
+                .clickable { onCategoryClick() },
+            shape = RoundedCornerShape(28.dp),
+            color = Color.White.copy(alpha = 0.45f)
         ) {
-            val directApps = apps.take(if (apps.size <= 4) 4 else 3)
-            val hasMoreCluster = apps.size > 4
-            val remainingApps = if (hasMoreCluster) apps.drop(3).take(4) else emptyList()
-
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(11.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(12.dp)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Row 1 (Items 0 and 1)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    if (directApps.isNotEmpty()) {
-                        MiniAppSlot(
-                            app = directApps[0],
-                            badgeCount = notificationCounts[directApps[0].packageName] ?: 0,
-                            isDarkTheme = isDarkTheme,
-                            onClick = { onAppClick(directApps[0].packageName) },
-                            onLongClick = { onAppLongClick(directApps[0]) }
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.size(52.dp))
-                    }
-
-                    if (directApps.size > 1) {
-                        MiniAppSlot(
-                            app = directApps[1],
-                            badgeCount = notificationCounts[directApps[1].packageName] ?: 0,
-                            isDarkTheme = isDarkTheme,
-                            onClick = { onAppClick(directApps[1].packageName) },
-                            onLongClick = { onAppLongClick(directApps[1]) }
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.size(52.dp))
-                    }
+                    AppIconSlot(app = category.apps.getOrNull(0), onAppClick = onAppClick, modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    AppIconSlot(app = category.apps.getOrNull(1), onAppClick = onAppClick, modifier = Modifier.weight(1f))
                 }
-
-                // Row 2 (Items 2 and 3 OR Cluster Folder)
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    if (directApps.size > 2) {
-                        MiniAppSlot(
-                            app = directApps[2],
-                            badgeCount = notificationCounts[directApps[2].packageName] ?: 0,
-                            isDarkTheme = isDarkTheme,
-                            onClick = { onAppClick(directApps[2].packageName) },
-                            onLongClick = { onAppLongClick(directApps[2]) }
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.size(52.dp))
-                    }
-
-                    if (directApps.size == 4) {
-                        // Exactly 4 apps: show 4th app directly
-                        MiniAppSlot(
-                            app = directApps[3],
-                            badgeCount = notificationCounts[directApps[3].packageName] ?: 0,
-                            isDarkTheme = isDarkTheme,
-                            onClick = { onAppClick(directApps[3].packageName) },
-                            onLongClick = { onAppLongClick(directApps[3]) }
-                        )
-                    } else if (hasMoreCluster) {
-                        // More than 4 apps: show iOS 2x2 folder thumbnail cluster
-                        ClusterFolderSlot(
-                            apps = remainingApps,
-                            isDarkTheme = isDarkTheme,
-                            onClick = onExpandCategory
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.size(52.dp))
-                    }
+                    AppIconSlot(app = category.apps.getOrNull(2), onAppClick = onAppClick, modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    AppIconSlot(app = category.apps.getOrNull(3), onAppClick = onAppClick, modifier = Modifier.weight(1f))
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Dynamic Day/Night Category Label below the box
         Text(
-            text = categoryTitle,
-            color = if (isDarkTheme) Color.White else Color(0xFF1C1C1E),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = TextStyle(
-                shadow = if (isDarkTheme) {
-                    androidx.compose.ui.graphics.Shadow(
-                        color = Color.Black.copy(alpha = 0.70f),
-                        blurRadius = 4f
-                    )
-                } else {
-                    androidx.compose.ui.graphics.Shadow(
-                        color = Color.White.copy(alpha = 0.80f),
-                        blurRadius = 2f
-                    )
-                }
-            )
+            text = category.name,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF2D3748),
+            textAlign = TextAlign.Center
         )
     }
 }
 
-// Single App Slot inside iOS Box (No text label, clean iOS squircle with glass styling)
-@OptIn(ExperimentalFoundationApi::class)
+// أيقونة التطبيق داخل المجلد (تتعامل مع الأيقونات والمساحات الفارغة مثل مجلد Travel)
 @Composable
-private fun MiniAppSlot(
-    app: AppItem,
-    badgeCount: Int,
-    isDarkTheme: Boolean = true,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
+fun AppIconSlot(
+    app: DrawerAppItem?,
+    onAppClick: (DrawerAppItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .size(54.dp)
-            .shadow(
-                elevation = 4.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = if (isDarkTheme) Color.White.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.08f)
-            )
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.verticalGradient(
-                    if (isDarkTheme) {
-                        listOf(
-                            Color.White.copy(alpha = 0.25f),
-                            Color.White.copy(alpha = 0.08f)
-                        )
-                    } else {
-                        listOf(
-                            Color.White.copy(alpha = 0.95f),
-                            Color(0xFFF0F0F2).copy(alpha = 0.90f)
-                        )
-                    }
-                )
-            )
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    if (isDarkTheme) {
-                        listOf(
-                            Color.White.copy(alpha = 0.60f),
-                            Color.White.copy(alpha = 0.16f)
-                        )
-                    } else {
-                        listOf(
-                            Color.Black.copy(alpha = 0.10f),
-                            Color.Black.copy(alpha = 0.04f)
-                        )
-                    }
-                ),
-                shape = RoundedCornerShape(16.dp)
-            )
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        // Specular glass shine
+    if (app != null) {
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.30f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-        if (app.iconBitmap != null) {
-            Image(
-                bitmap = app.iconBitmap,
-                contentDescription = app.label,
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(11.dp)),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            AsyncImage(
-                model = app.icon,
-                contentDescription = app.label,
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(11.dp)),
-                contentScale = ContentScale.Crop
-            )
-        }
-
-        if (badgeCount > 0) {
-            Surface(
-                color = Color(0xFFFF3B30),
-                shape = CircleShape,
-                border = BorderStroke(1.2.dp, Color.White),
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 3.dp, y = (-2).dp)
-            ) {
-                Text(
-                    text = if (badgeCount > 99) "99+" else "$badgeCount",
-                    color = Color.White,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 0.5.dp)
-                )
-            }
-        }
-    }
-}
-
-// Mini 2x2 Cluster Folder Thumbnail inside iOS Box (No text label, clean frosted mini-folder)
-@Composable
-private fun ClusterFolderSlot(
-    apps: List<AppItem>,
-    isDarkTheme: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val clusterBg = if (isDarkTheme) Color.White.copy(alpha = 0.16f) else Color(0xFFE5E5EA).copy(alpha = 0.85f)
-    val clusterBorder = if (isDarkTheme) Color.White.copy(alpha = 0.20f) else Color.Black.copy(alpha = 0.08f)
-
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = clusterBg,
-        border = BorderStroke(0.8.dp, clusterBorder),
-        modifier = modifier
-            .size(52.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .clickable { onClick() }
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(4.dp),
+                .clip(RoundedCornerShape(16.dp))
+                .background(app.iconColor)
+                .clickable { onAppClick(app) },
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (apps.isNotEmpty()) {
-                        MiniThumb(apps[0])
-                    } else {
-                        Spacer(modifier = Modifier.size(20.dp))
-                    }
-                    if (apps.size > 1) {
-                        MiniThumb(apps[1])
-                    } else {
-                        Spacer(modifier = Modifier.size(20.dp))
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (apps.size > 2) {
-                        MiniThumb(apps[2])
-                    } else {
-                        Spacer(modifier = Modifier.size(20.dp))
-                    }
-                    if (apps.size > 3) {
-                        MiniThumb(apps[3])
-                    } else {
-                        Spacer(modifier = Modifier.size(20.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MiniThumb(app: AppItem) {
-    if (app.iconBitmap != null) {
-        Image(
-            bitmap = app.iconBitmap,
-            contentDescription = null,
-            modifier = Modifier
-                .size(17.dp)
-                .clip(RoundedCornerShape(5.dp)),
-            contentScale = ContentScale.Crop
-        )
-    } else {
-        AsyncImage(
-            model = app.icon,
-            contentDescription = null,
-            modifier = Modifier
-                .size(17.dp)
-                .clip(RoundedCornerShape(5.dp)),
-            contentScale = ContentScale.Crop
-        )
-    }
-}
-
-// Expanded Full Category Folder Dialog (like iOS expanding a category box)
-@Composable
-fun CategoryFolderDialog(
-    category: AppCategoryInfo,
-    apps: List<AppItem>,
-    isDarkTheme: Boolean,
-    notificationCounts: Map<String, Int>,
-    onAppClick: (String) -> Unit,
-    onAppLongClick: (AppItem) -> Unit,
-    onDismissRequest: () -> Unit
-) {
-    var dialogSearch by remember { mutableStateOf("") }
-    val filtered = remember(dialogSearch, apps) {
-        if (dialogSearch.isBlank()) apps
-        else apps.filter { it.label.contains(dialogSearch, ignoreCase = true) }
-    }
-
-    val dialogBg = if (isDarkTheme) Color(0xFF161922).copy(alpha = 0.78f) else Color(0xFFF2F5FA).copy(alpha = 0.82f)
-    val titleColor = if (isDarkTheme) Color.White else Color(0xFF1E2125)
-
-    Dialog(onDismissRequest = onDismissRequest) {
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = dialogBg,
-            border = BorderStroke(1.2.dp, if (isDarkTheme) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.70f)),
-            shadowElevation = 20.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.72f)
-                .clip(RoundedCornerShape(28.dp))
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(18.dp)
-            ) {
-                // Header with Close
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val currentLang = java.util.Locale.getDefault().language
-                    val folderTitle = if (currentLang == "ar") category.titleAr else category.titleEn
-                    val subtitle = if (currentLang == "ar") "${apps.size} تطبيقات" else "${apps.size} apps"
-
-                    Column {
-                        Text(
-                            text = "${category.iconEmoji} $folderTitle",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = titleColor
-                        )
-                        Text(
-                            text = subtitle,
-                            fontSize = 12.sp,
-                            color = titleColor.copy(alpha = 0.60f)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onDismissRequest,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = if (isDarkTheme) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Fermer",
-                                tint = titleColor,
-                                modifier = Modifier.padding(6.dp).size(18.dp)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Search inside folder if there are many apps
-                if (apps.size > 6) {
-                    Surface(
-                        shape = CircleShape,
-                        color = if (isDarkTheme) Color(0xFF242834) else Color(0xFFE5E9F2),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(40.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null,
-                                tint = titleColor.copy(alpha = 0.50f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            BasicTextField(
-                                value = dialogSearch,
-                                onValueChange = { dialogSearch = it },
-                                singleLine = true,
-                                textStyle = TextStyle(color = titleColor, fontSize = 13.sp),
-                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                modifier = Modifier.weight(1f),
-                                decorationBox = { inner ->
-                                    Box(contentAlignment = Alignment.CenterStart) {
-                                        if (dialogSearch.isEmpty()) {
-                                            Text(
-                                                "بحث في ${category.titleAr}...",
-                                                color = titleColor.copy(alpha = 0.45f),
-                                                fontSize = 13.sp
-                                            )
-                                        }
-                                        inner()
-                                    }
-                                }
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                }
-
-                // Grid of all apps in this category
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    contentPadding = PaddingValues(vertical = 4.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(
-                        items = filtered,
-                        key = { it.packageName },
-                        contentType = { "app_icon" }
-                    ) { app ->
-                        AppIconItem(
-                            app = app,
-                            badgeCount = notificationCounts[app.packageName] ?: 0,
-                            textColor = titleColor,
-                            shadow = false,
-                            showLabel = true,
-                            iconSize = 54.dp,
-                            onClick = { onAppClick(app.packageName) },
-                            onLongClick = { onAppLongClick(app) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-// Search & Lens Helper Functions
-private fun launchVoiceSearch(context: Context) {
-    try {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Parlez maintenant...")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(intent)
-    } catch (_: Exception) {
-        try {
-            val fallback = Intent(RecognizerIntent.ACTION_WEB_SEARCH).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(fallback)
-        } catch (_: Exception) {}
-    }
-}
-
-private fun launchGoogleLens(context: Context) {
-    try {
-        val lensIntent = Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse("googlelens://v1")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(lensIntent)
-    } catch (_: Exception) {
-        try {
-            val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(cameraIntent)
-        } catch (_: Exception) {}
-    }
-}
-
-private fun launchGoogleSearch(context: Context) {
-    try {
-        val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(intent)
-    } catch (_: Exception) {
-        try {
-            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com")).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(browserIntent)
-        } catch (_: Exception) {}
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun AppIconItem(
-    app: AppItem,
-    badgeCount: Int = 0,
-    showLabel: Boolean = true,
-    textColor: Color = Color.White,
-    shadow: Boolean = false,
-    iconSize: Dp = 60.dp,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null
-) {
-    Column(
-        modifier = Modifier
-            .padding(vertical = 5.dp, horizontal = 4.dp)
-            .semantics(mergeDescendants = true) {
-                role = Role.Button
-                contentDescription = app.label
-            }
-            .clip(RoundedCornerShape(16.dp))
-            .combinedClickable(
-                indication = ripple(bounded = false, radius = (iconSize / 2) + 8.dp),
-                interactionSource = remember { MutableInteractionSource() },
-                onClickLabel = "Ouvrir ${app.label}",
-                onLongClickLabel = if (onLongClick != null) "Options de ${app.label}" else null,
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(contentAlignment = Alignment.TopEnd) {
-            if (app.iconBitmap != null) {
-                Image(
-                    bitmap = app.iconBitmap,
-                    contentDescription = app.label,
-                    modifier = Modifier
-                        .size(iconSize)
-                        .clip(RoundedCornerShape(18.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                AsyncImage(
-                    model = app.icon,
-                    contentDescription = app.label,
-                    modifier = Modifier
-                        .size(iconSize)
-                        .clip(RoundedCornerShape(18.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            if (badgeCount > 0) {
-                Surface(
-                    color = Color(0xFFFF3B30),
-                    shape = CircleShape,
-                    border = BorderStroke(1.5.dp, Color.White),
-                    modifier = Modifier.offset(x = 6.dp, y = (-4).dp)
-                ) {
-                    Text(
-                        text = if (badgeCount > 99) "99+" else "$badgeCount",
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                    )
-                }
-            }
-        }
-
-        if (showLabel) {
-            Spacer(modifier = Modifier.height(4.dp))
-            val textStyle = if (shadow) {
-                TextStyle(
-                    shadow = androidx.compose.ui.graphics.Shadow(
-                        color = Color.Black.copy(alpha = 0.7f),
-                        blurRadius = 6f
-                    )
-                )
-            } else {
-                TextStyle()
-            }
-
             Text(
-                text = app.label,
-                fontSize = 11.sp,
-                color = textColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                style = textStyle,
-                fontWeight = FontWeight.Medium
+                text = app.name.take(2).uppercase(),
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp
             )
         }
+    } else {
+        Spacer(modifier = modifier.fillMaxSize())
     }
+}
+
+// بيانات المجلدات والتطبيقات التجريبية
+fun getSampleCategories(): List<DrawerCategory> {
+    return listOf(
+        DrawerCategory(
+            id = "1",
+            name = "Social",
+            apps = listOf(
+                DrawerAppItem("1", "FB", Color(0xFF1877F2)),
+                DrawerAppItem("2", "IG", Color(0xFFE4405F)),
+                DrawerAppItem("3", "WA", Color(0xFF25D366)),
+                DrawerAppItem("4", "PN", Color(0xFFBD081C))
+            )
+        ),
+        DrawerCategory(
+            id = "2",
+            name = "Utilities",
+            apps = listOf(
+                DrawerAppItem("5", "Cam", Color(0xFF4A5568)),
+                DrawerAppItem("6", "Calc", Color(0xFF38A169)),
+                DrawerAppItem("7", "Clock", Color(0xFFDD6B20)),
+                DrawerAppItem("8", "Weather", Color(0xFF3182CE))
+            )
+        ),
+        DrawerCategory(
+            id = "3",
+            name = "Productivity",
+            apps = listOf(
+                DrawerAppItem("9", "Cal", Color(0xFF3182CE)),
+                DrawerAppItem("10", "Docs", Color(0xFF4299E1)),
+                DrawerAppItem("11", "Drive", Color(0xFF38A169)),
+                DrawerAppItem("12", "Git", Color(0xFF2D3748))
+            )
+        ),
+        DrawerCategory(
+            id = "4",
+            name = "Entertainment",
+            apps = listOf(
+                DrawerAppItem("13", "Music", Color(0xFFDD6B20)),
+                DrawerAppItem("14", "SUNO", Color(0xFFE53E3E)),
+                DrawerAppItem("15", "TikTok", Color(0xFF1A202C)),
+                DrawerAppItem("16", "YT", Color(0xFFE53E3E))
+            )
+        ),
+        DrawerCategory(
+            id = "5",
+            name = "Travel",
+            // خانة واحدة متوفرة وخانات فارغة مطابقة للصورة الثانية (Travel)
+            apps = listOf(
+                DrawerAppItem("17", "Maps", Color(0xFF38A169))
+            )
+        ),
+        DrawerCategory(
+            id = "6",
+            name = "Shopping",
+            apps = listOf(
+                DrawerAppItem("18", "Shop", Color(0xFF805AD5)),
+                DrawerAppItem("19", "Store", Color(0xFFD69E2E))
+            )
+        )
+    )
 }
