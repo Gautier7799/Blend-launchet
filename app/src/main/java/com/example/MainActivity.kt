@@ -45,33 +45,114 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                MainLauncherApp()
+                BlendLauncherMasterApp()
             }
         }
     }
 }
 
-// 1. التطبيق الرئيسي يجمع الصفحات الثلاث (البحث - الشاشة الرئيسية - مكتبة التطبيقات)
+// 1. نظام الصفحات الأربع المتكاملة (Today View -> Spotlight Search -> Home Screen -> App Library)
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MainLauncherApp() {
-    // تبدأ الشاشة من الصفحة الوسطى (الصفحة 1 - الشاشة الرئيسية)
-    val pagerState = rememberPagerState(initialPage = 1, pageCount = { 3 })
+fun BlendLauncherMasterApp() {
+    // تبدأ الواجهة من الصفحة الرئيسية (الصفحة index 2)
+    val pagerState = rememberPagerState(initialPage = 2, pageCount = { 4 })
 
     HorizontalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize()
     ) { page ->
         when (page) {
-            0 -> SpotlightSearchScreen()    // العنصر 2 و 3: شاشة البحث السريع
-            1 -> HomeScreenWithWidgets()   // العنصر 1: الشاشة الرئيسية بالودجات
-            2 -> AppLibraryRealScreen()     // العنصر 4: مكتبة التطبيقات
+            0 -> TodayWidgetsScreen()      // العنصر 5: صفحة الودجات الجانبية Today View
+            1 -> SpotlightSearchScreen()    // العنصر 2 و 3: شاشة البحث السريع والقائمة العمودية
+            2 -> HomeScreenWithWidgets()   // العنصر 4: الشاشة الرئيسية بالودجات و Dock
+            3 -> AppLibraryRealScreen()     // العنصر 1: مكتبة التطبيقات بالمجلدات الزجاجية
         }
     }
 }
 
 // ==========================================
-// العنصر 1: الشاشة الرئيسية + ودجت الطقس والبطارية
+// العنصر 5: صفحة الودجات الجانبية (Today View / Widgets Page)
+// ==========================================
+@Composable
+fun TodayWidgetsScreen() {
+    val context = LocalContext.current
+    val installedApps = remember { getInstalledApps(context) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF5A758D))
+            .statusBarsPadding()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // ودجت الطقس الممتد
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(130.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF1B6B93).copy(alpha = 0.85f)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Tataouine", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                    Text("22°", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold)
+                    Text("Clear Sky • H:22° L:17°", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                }
+            }
+        }
+
+        // ودجت اقتراحات التطبيقات (Shorcuts Widget)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White.copy(alpha = 0.45f)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "SUGGESTIONS",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.DarkGray,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    installedApps.take(4).forEach { app ->
+                        val bitmap = remember(app.icon) { app.icon.toBitmap(100, 100).asImageBitmap() }
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable { launchApp(context, app.packageName) }
+                        ) {
+                            Image(
+                                bitmap = bitmap,
+                                contentDescription = app.label,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(text = app.label, fontSize = 10.sp, color = Color.Black, maxLines = 1)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==========================================
+// العنصر 4: الشاشة الرئيسية بالودجات والشريط السفلي
 // ==========================================
 @Composable
 fun HomeScreenWithWidgets() {
@@ -82,20 +163,18 @@ fun HomeScreenWithWidgets() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF8BA2B5)) // خلفية متدرجة زرقاء دافئة
+            .background(Color(0xFF8BA2B5))
             .statusBarsPadding()
             .padding(16.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column {
-            // صف الودجات العلوي (الطقس والبطارية)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp),
+                    .height(135.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // ودجت الطقس (Weather Widget)
                 Surface(
                     modifier = Modifier
                         .weight(1f)
@@ -108,12 +187,11 @@ fun HomeScreenWithWidgets() {
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("Tataouine", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
-                        Text("22°", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+                        Text("22°", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
                         Text("Broken clouds\nH:22° L:17°", color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp)
                     }
                 }
 
-                // ودجت البطارية (Battery Widget)
                 Surface(
                     modifier = Modifier
                         .weight(1f)
@@ -131,29 +209,23 @@ fun HomeScreenWithWidgets() {
                         Box(contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(
                                 progress = { batteryLevel / 100f },
-                                modifier = Modifier.size(54.dp),
+                                modifier = Modifier.size(52.dp),
                                 color = Color(0xFF4CAF50),
                                 trackColor = Color.LightGray.copy(alpha = 0.4f),
                                 strokeWidth = 6.dp
                             )
                         }
-                        Text(
-                            text = "$batteryLevel%",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
+                        Text(text = "$batteryLevel%", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // شبكة التطبيقات الرئيسية
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 items(installedApps.take(12)) { app ->
                     HomeScreenAppItem(app = app, onClick = { launchApp(context, app.packageName) })
@@ -161,11 +233,10 @@ fun HomeScreenWithWidgets() {
             }
         }
 
-        // الشريط السفلي (Dock)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(84.dp),
+                .height(80.dp),
             shape = RoundedCornerShape(36.dp),
             color = Color.White.copy(alpha = 0.35f)
         ) {
@@ -180,7 +251,7 @@ fun HomeScreenWithWidgets() {
                         bitmap = bitmap,
                         contentDescription = app.label,
                         modifier = Modifier
-                            .size(52.dp)
+                            .size(50.dp)
                             .clip(CircleShape)
                             .clickable { launchApp(context, app.packageName) }
                     )
@@ -190,7 +261,6 @@ fun HomeScreenWithWidgets() {
     }
 }
 
-// أيقونة تطبيق على الشاشة الرئيسية
 @Composable
 fun HomeScreenAppItem(app: RealAppModel, onClick: () -> Unit) {
     val bitmap = remember(app.icon) { app.icon.toBitmap(100, 100).asImageBitmap() }
@@ -202,22 +272,16 @@ fun HomeScreenAppItem(app: RealAppModel, onClick: () -> Unit) {
             bitmap = bitmap,
             contentDescription = app.label,
             modifier = Modifier
-                .size(56.dp)
+                .size(54.dp)
                 .clip(RoundedCornerShape(16.dp))
         )
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = app.label,
-            fontSize = 11.sp,
-            color = Color.White,
-            maxLines = 1,
-            textAlign = TextAlign.Center
-        )
+        Text(text = app.label, fontSize = 11.sp, color = Color.White, maxLines = 1, textAlign = TextAlign.Center)
     }
 }
 
 // ==========================================
-// العنصر 2 و 3: شاشة البحث السريع (Spotlight Search)
+// العنصر 2 و 3: البحث السريع Spotlight Search
 // ==========================================
 @Composable
 fun SpotlightSearchScreen() {
@@ -233,11 +297,10 @@ fun SpotlightSearchScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF6B8A99)) // خلفية الشاشة المعتمة
+            .background(Color(0xFF6B8A99))
             .statusBarsPadding()
             .padding(16.dp)
     ) {
-        // شريط البحث
         TextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -257,7 +320,6 @@ fun SpotlightSearchScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // القائمة المباشرة للتطبيقات (قائمة عمودية مثل الصورة 3)
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxSize()
@@ -281,12 +343,7 @@ fun SpotlightSearchScreen() {
                             .clip(RoundedCornerShape(10.dp))
                     )
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = app.label,
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Text(text = app.label, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -294,7 +351,7 @@ fun SpotlightSearchScreen() {
 }
 
 // ==========================================
-// العنصر 4: شاشة مكتبة التطبيقات (App Library)
+// العنصر 1: مكتبة التطبيقات App Library
 // ==========================================
 @Composable
 fun AppLibraryRealScreen() {
@@ -414,11 +471,7 @@ fun RealAppIconSlot(
                 .clickable { onAppClick(app) },
             contentAlignment = Alignment.Center
         ) {
-            Image(
-                bitmap = bitmap,
-                contentDescription = app.label,
-                modifier = Modifier.fillMaxSize()
-            )
+            Image(bitmap = bitmap, contentDescription = app.label, modifier = Modifier.fillMaxSize())
         }
     } else {
         Spacer(modifier = modifier.fillMaxSize())
@@ -426,7 +479,7 @@ fun RealAppIconSlot(
 }
 
 // ==========================================
-// دوال النظام المساعدة (تحميل التطبيقات والبطارية)
+// إدارة التطبيقات والأذونات
 // ==========================================
 data class RealAppModel(
     val packageName: String,
@@ -498,5 +551,5 @@ fun getBatteryLevel(context: Context): Int {
     val batteryIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
     val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
     val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-    return if (level != -1 && scale != -1) ((level / scale.toFloat()) * 100).toInt() else 80
+    return if (level != -1 && scale != -1) ((level / scale.toFloat()) * 100).toInt() else 85
 }
