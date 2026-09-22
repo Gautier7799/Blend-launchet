@@ -4,8 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.BatteryManager
 import android.os.Bundle
+import android.provider.AlarmClock
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -23,6 +26,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Accessibility
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -74,7 +79,7 @@ fun BlendLauncherMasterApp() {
 }
 
 // ==========================================
-// الصفحة 5: Today View (ودجات زجاجية ضبابية)
+// الصفحة 5: Today View (ودجات زجاجية ضبابية + تفاعل)
 // ==========================================
 @Composable
 fun TodayWidgetsScreen() {
@@ -89,13 +94,14 @@ fun TodayWidgetsScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // ودجت الطقس الممتد بتأثير الضبابية الزجاجية
+        // ودجت الطقس الممتد (الضغط عليه يفتح تطبيق الطقس)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(130.dp),
+                .height(130.dp)
+                .clickable { openWeatherApp(context) },
             shape = RoundedCornerShape(24.dp),
-            color = Color(0xFF1B6B93).copy(alpha = 0.7f)
+            color = Color(0xFF1B6B93).copy(alpha = 0.75f)
         ) {
             Row(
                 modifier = Modifier
@@ -112,7 +118,7 @@ fun TodayWidgetsScreen() {
             }
         }
 
-        // ودجت الاقتراحات السريعة الزجاجي (Frosted Glass)
+        // ودجت الاقتراحات السريعة الزجاجي
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -171,17 +177,23 @@ fun HomeScreenWithWidgets() {
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column {
+            // شريط طلب الأذونات السريعة (Overlay / Accessibility)
+            PermissionQuickBar(context = context)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(135.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // ودجت الطقس
+                // ودجت الطقس (الضغط يفتح الطقس)
                 Surface(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxHeight(),
+                        .fillMaxHeight()
+                        .clickable { openWeatherApp(context) },
                     shape = RoundedCornerShape(24.dp),
                     color = Color(0xFF1B6B93).copy(alpha = 0.75f)
                 ) {
@@ -195,11 +207,12 @@ fun HomeScreenWithWidgets() {
                     }
                 }
 
-                // ودجت البطارية الزجاجي
+                // ودجت البطارية (الضغط يفتح إعدادات البطارية)
                 Surface(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxHeight(),
+                        .fillMaxHeight()
+                        .clickable { openBatterySettings(context) },
                     shape = RoundedCornerShape(24.dp),
                     color = Color.White.copy(alpha = 0.45f)
                 ) {
@@ -266,6 +279,49 @@ fun HomeScreenWithWidgets() {
     }
 }
 
+// شريط الأذونات التفاعلي (Superposition & Accessibility)
+@Composable
+fun PermissionQuickBar(context: Context) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Surface(
+            modifier = Modifier
+                .weight(1f)
+                .clickable { openOverlaySettings(context) },
+            shape = RoundedCornerShape(16.dp),
+            color = Color.White.copy(alpha = 0.25f)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Layers, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Superposition", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+
+        Surface(
+            modifier = Modifier
+                .weight(1f)
+                .clickable { openAccessibilitySettings(context) },
+            shape = RoundedCornerShape(16.dp),
+            color = Color.White.copy(alpha = 0.25f)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Accessibility, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Accessibility", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
+
 @Composable
 fun HomeScreenAppItem(app: RealAppModel, onClick: () -> Unit) {
     val bitmap = remember(app.icon) { app.icon.toBitmap(100, 100).asImageBitmap() }
@@ -303,7 +359,7 @@ fun SpotlightSearchScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF3F51B5).copy(alpha = 0.2f))
-            .blur(16.dp) // تطبيق تأثير الـ Blur على خلفية شاشة البحث
+            .blur(16.dp)
     )
 
     Column(
@@ -397,7 +453,14 @@ fun AppLibraryRealScreen() {
                 Text("App Library", color = Color(0xFF4A5568), fontSize = 15.sp, modifier = Modifier.weight(1f))
                 Icon(Icons.Default.Mic, contentDescription = null, tint = Color(0xFF4A5568), modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(12.dp))
-                Icon(Icons.Default.Settings, contentDescription = null, tint = Color(0xFF4A5568), modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = null,
+                    tint = Color(0xFF4A5568),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { openSystemSettings(context) }
+                )
             }
         }
 
@@ -433,7 +496,7 @@ fun RealFolderCard(
                 .fillMaxWidth()
                 .aspectRatio(1f),
             shape = RoundedCornerShape(28.dp),
-            color = Color.White.copy(alpha = 0.45f) // المجلد الزجاجي الشفاف
+            color = Color.White.copy(alpha = 0.45f)
         ) {
             Column(
                 modifier = Modifier
@@ -490,7 +553,7 @@ fun RealAppIconSlot(
 }
 
 // ==========================================
-// نموذج وقراءة التطبيقات من نظام الأندرويد
+// إدارة التطبيقات والأذونات والدوال التفاعلية
 // ==========================================
 data class RealAppModel(
     val packageName: String,
@@ -563,4 +626,52 @@ fun getBatteryLevel(context: Context): Int {
     val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
     val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
     return if (level != -1 && scale != -1) ((level / scale.toFloat()) * 100).toInt() else 85
+}
+
+// دالة فتح الطقس
+fun openWeatherApp(context: Context) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=weather"))
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(intent)
+}
+
+// دالة فتح إعدادات البطارية
+fun openBatterySettings(context: Context) {
+    try {
+        val intent = Intent(Intent.ACTION_POWER_USAGE_SUMMARY)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        val intent = Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    }
+}
+
+// دالة فتح إعدادات النظام
+fun openSystemSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_SETTINGS)
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(intent)
+}
+
+// دالة طلب إذن الظهور فوق التطبيقات (Superposition / Overlay)
+fun openOverlaySettings(context: Context) {
+    if (!Settings.canDrawOverlays(context)) {
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:${context.packageName}")
+        )
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    } else {
+        openSystemSettings(context)
+    }
+}
+
+// دالة فتح إعدادات سهولة الوصول (Accessibility)
+fun openAccessibilitySettings(context: Context) {
+    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(intent)
 }
