@@ -23,8 +23,8 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      # إنشاء ملف google-services.json وهمي لتفادي أخطاء المكونات المفقودة
-      - name: Create Dummy google-services.json
+      # إنشاء ملف google-services.json مكتمل المكونات لتفادي خطأ Missing api_key
+      - name: Create Valid Dummy google-services.json
         run: |
           mkdir -p app
           cat <<EOF > app/google-services.json
@@ -41,14 +41,18 @@ jobs:
                   "android_client_info": {
                     "package_name": "com.example.launcher"
                   }
-                }
+                },
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyDummyKeyForBuildSuccessOnly123"
+                  }
+                ]
               }
             ],
             "configuration_version": "1"
           }
           EOF
 
-      # التحقق من وجود gradlew وتوليده تلقائياً إن كان مفقوداً ثم البناء
       - name: Build Debug APK
         run: |
           if [ ! -f "./gradlew" ]; then
