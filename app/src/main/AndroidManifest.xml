@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- إذن قراءة كافة التطبيقات المثبتة في أندرويد 11 فما فوق -->
+    <!-- الأذونات المطلوبة لقراءة كافة التطبيقات والبطارية -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.BATTERY_STATS" />
 
@@ -13,20 +13,22 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BlendLauncher">
 
+        <!-- النشاط الرئيسي للانطلاق -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.example.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:stateNotNeeded="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
-                <!-- جعل التطبيق يعمل كمشغل رئيسي (Home Launcher) -->
+                <!-- تعيين التطبيق كمشغل رئيسي (Home Launcher) -->
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
     </application>
 
 </manifest>
