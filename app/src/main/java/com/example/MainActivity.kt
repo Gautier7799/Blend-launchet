@@ -2,19 +2,21 @@ package com.example
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.graphics.drawable.Drawable
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
@@ -33,19 +35,123 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                AppLibraryRealScreen()
+                BlendFullLauncherApp()
             }
         }
     }
 }
 
-// نموذج البيانات للتطبيق الحقيقي
+// 1. التطبيق الكامل يدمج الرئيسية ومكتبة التطبيقات عبر السحب
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun BlendFullLauncherApp() {
+    val pagerState = rememberPagerState(pageCount = { 2 })
+
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.fillMaxSize()
+    ) { page ->
+        when (page) {
+            0 -> HomeScreen() // الصفحة الرئيسية للتطبيق
+            1 -> AppLibraryRealScreen() // صفحة مكتبة التطبيقات (عند السحب)
+        }
+    }
+}
+
+// 2. الشاشة الرئيسية للتطبيق (Home Screen)
+@Composable
+fun HomeScreen() {
+    val context = LocalContext.current
+    val currentTime = remember {
+        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+    }
+    val currentDate = remember {
+        SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date())
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFB0C4DE)) // خلفية اللانشر الرئيسية
+            .statusBarsPadding()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        // الـ Widget العلوي (الساعة والتاريخ)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(top = 40.dp)
+        ) {
+            Text(
+                text = currentTime,
+                fontSize = 64.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Text(
+                text = currentDate,
+                fontSize = 18.sp,
+                color = Color.White.copy(alpha = 0.8f)
+            )
+        }
+
+        // إشارة التمرير لمكتبة التطبيقات
+        Surface(
+            color = Color.White.copy(alpha = 0.3f),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.padding(vertical = 16.dp)
+        ) {
+            Text(
+                text = "Swipe left for App Library ➔",
+                color = Color.White,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+
+        // الشريط السفلي (Dock)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .background(Color.White.copy(alpha = 0.25f), shape = RoundedCornerShape(32.dp))
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val installedApps = remember { getInstalledApps(context) }
+            val dockApps = installedApps.take(4) // أول 4 تطبيقات في الشريط السفلي
+
+            dockApps.forEach { app ->
+                val bitmap = remember(app.icon) { app.icon.toBitmap(100, 100).asImageBitmap() }
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .clickable { launchApp(context, app.packageName) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = app.label,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
+    }
+}
+
+// 3. شاشة مكتبة التطبيقات الحقيقية (App Library)
 data class RealAppModel(
     val packageName: String,
     val label: String,
@@ -62,19 +168,17 @@ data class RealCategoryFolder(
 fun AppLibraryRealScreen() {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
-    
-    // جلب التطبيقات المثبتة الحقيقية من النظام
+
     val installedApps = remember { getInstalledApps(context) }
     val categories = remember(installedApps) { groupAppsIntoCategories(installedApps) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFC7DAE5)) // خلفية زرقاء فاتحة ناعمة طبق الأصل
+            .background(Color(0xFFC7DAE5))
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // شريط البحث العلوي الزجاجي
         AppLibrarySearchBar(
             query = searchQuery,
             onQueryChange = { searchQuery = it }
@@ -82,7 +186,6 @@ fun AppLibraryRealScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // شبكة المجلدات الرئيسية
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -146,7 +249,7 @@ fun RealFolderCard(
                 .fillMaxWidth()
                 .aspectRatio(1f),
             shape = RoundedCornerShape(28.dp),
-            color = Color.White.copy(alpha = 0.45f) // خلفية زجاجية شفافة للمجلد
+            color = Color.White.copy(alpha = 0.45f)
         ) {
             Column(
                 modifier = Modifier
@@ -187,9 +290,7 @@ fun RealAppIconSlot(
     modifier: Modifier = Modifier
 ) {
     if (app != null) {
-        val bitmap = remember(app.icon) {
-            app.icon.toBitmap(120, 120).asImageBitmap()
-        }
+        val bitmap = remember(app.icon) { app.icon.toBitmap(120, 120).asImageBitmap() }
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -208,54 +309,50 @@ fun RealAppIconSlot(
     }
 }
 
-// دالة جلب التطبيقات المثبتة من النظام
+// دالة قراءة التطبيقات من نظام الأندرويد
 fun getInstalledApps(context: Context): List<RealAppModel> {
     val pm = context.packageManager
     val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
         addCategory(Intent.CATEGORY_LAUNCHER)
     }
     val resolveInfos = pm.queryIntentActivities(mainIntent, 0)
-    
+
     val list = mutableListOf<RealAppModel>()
     for (info in resolveInfos) {
         val packageName = info.activityInfo.packageName
-        if (packageName == context.packageName) continue // تجنب إظهار المشغل نفسه
-        
+        if (packageName == context.packageName) continue
+
         val label = info.loadLabel(pm).toString()
         val icon = info.loadIcon(pm)
         val category = determineCategory(packageName, label)
-        
+
         list.add(RealAppModel(packageName, label, icon, category))
     }
     return list
 }
 
-// تصنيف التطبيقات الحقيقية إلى مجلدات
 fun determineCategory(packageName: String, label: String): String {
     val pkg = packageName.lowercase()
-    val lbl = label.lowercase()
-    
     return when {
-        pkg.contains("facebook") || pkg.contains("instagram") || pkg.contains("whatsapp") || 
+        pkg.contains("facebook") || pkg.contains("instagram") || pkg.contains("whatsapp") ||
         pkg.contains("twitter") || pkg.contains("tiktok") || pkg.contains("telegram") || pkg.contains("snapchat") -> "Social"
-        
+
         pkg.contains("youtube") || pkg.contains("spotify") || pkg.contains("music") || pkg.contains("suno") -> "Entertainment"
-        
-        pkg.contains("google") || pkg.contains("chrome") || pkg.contains("drive") || 
+
+        pkg.contains("google") || pkg.contains("chrome") || pkg.contains("drive") ||
         pkg.contains("docs") || pkg.contains("github") || pkg.contains("calendar") -> "Productivity"
-        
-        pkg.contains("camera") || pkg.contains("calculator") || pkg.contains("clock") || 
+
+        pkg.contains("camera") || pkg.contains("calculator") || pkg.contains("clock") ||
         pkg.contains("settings") || pkg.contains("weather") -> "Utilities"
-        
+
         pkg.contains("map") || pkg.contains("uber") || pkg.contains("travel") -> "Travel"
-        
+
         else -> "Other"
     }
 }
 
 fun groupAppsIntoCategories(apps: List<RealAppModel>): List<RealCategoryFolder> {
-    val grouped = apps.groupBy { it.category }
-    return grouped.map { (cat, appList) ->
+    return apps.groupBy { it.category }.map { (cat, appList) ->
         RealCategoryFolder(cat, appList)
     }
 }
