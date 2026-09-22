@@ -1,159 +1,98 @@
-package com.example.yourapp.ui.screens
+package com.example.launcher.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.example.launcher.R
+import com.example.launcher.data.model.AppItem
+import com.example.launcher.data.model.FolderItem
+import com.example.launcher.ui.components.SmartFolders
 
-// 1. نماذج البيانات (Data Models)
-data class AppItem(
-    val id: String,
-    val name: String,
-    val iconColor: Color = Color.White
-)
-
-data class FolderCategory(
-    val id: String,
-    val title: String,
-    val apps: List<AppItem>
-)
-
-// 2. الواجهة الرئيسية (App Library Screen)
 @Composable
-fun AppLibraryScreen(
-    categories: List<FolderCategory>,
-    onFolderClick: (FolderCategory) -> Unit = {}
-) {
+fun AppLibraryScreen() {
+    var searchQuery by remember { mutableStateOf("") }
+
+    val sampleApps = remember {
+        listOf(
+            AppItem("1", "Camera", R.drawable.ic_launcher_foreground),
+            AppItem("2", "Settings", R.drawable.ic_launcher_foreground),
+            AppItem("3", "Photos", R.drawable.ic_launcher_foreground),
+            AppItem("4", "Music", R.drawable.ic_launcher_foreground)
+        )
+    }
+
+    val sampleFolders = remember {
+        listOf(
+            FolderItem("Social", sampleApps),
+            FolderItem("Utilities", sampleApps.take(2))
+        )
+    }
+
+    val filteredApps = remember(searchQuery) {
+        if (searchQuery.isBlank()) sampleApps
+        else sampleApps.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFC7DAE5)) // خلفية زرقاء فاتحة مطابقة للصورة الثانية
             .padding(16.dp)
     ) {
         // شريط البحث العلوي
-        SearchBarView()
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // شبكة المجلدات الرئيسية (العنصر 1)
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(categories) { category ->
-                FolderCard(
-                    category = category,
-                    onClick = { onFolderClick(category) }
-                )
-            }
-        }
-    }
-}
-
-// شريط البحث العلوي
-@Composable
-fun SearchBarView() {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.5f)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.DarkGray)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("App Library", color = Color.DarkGray, fontSize = 15.sp)
-            Spacer(modifier = Modifier.weight(1f))
-            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.DarkGray)
-        }
-    }
-}
-
-// 3. كرت المجلد الداخلي (العناصر 2 و 3)
-@Composable
-fun FolderCard(
-    category: FolderCategory,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
-    ) {
-        Surface(
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("App Library") },
+            shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f),
-            shape = RoundedCornerShape(28.dp),
-            color = Color.White.copy(alpha = 0.4f)
-        ) {
-            // شبكة 2x2 داخل المجلد لعرض أيقونات التطبيقات
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .padding(10.dp)
-                    .fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                userScrollEnabled = false
+                .padding(bottom = 16.dp),
+            singleLine = true
+        )
+
+        if (searchQuery.isEmpty()) {
+            // عرض المجلدات عند عدم وجود بحث
+            SmartFolders(folders = sampleFolders)
+        } else {
+            // الجزء المكتمل من القائمة (LazyColumn)
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(4) { index ->
-                    if (index < category.apps.size) {
-                        // مربع الأيقونة الممتلئ (مثل الخرائط أو الأيقونات الأخرى)
-                        Box(
+                items(filteredApps) { app ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = app.iconRes),
+                            contentDescription = app.name,
                             modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(category.apps[index].iconColor),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = category.apps[index].name.take(1),
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black,
-                                fontSize = 12.sp
-                            )
-                        }
-                    } else {
-                        // خانة فارغة للمجلدات غير المكتملة (مثل مجلد Travel في الصورة الثانية)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(Color.Transparent)
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = app.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Black
                         )
                     }
                 }
             }
         }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = category.title,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.Black
-        )
     }
 }
