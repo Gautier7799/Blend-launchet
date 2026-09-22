@@ -24,10 +24,10 @@ fun AppLibraryScreen() {
 
     val sampleApps = remember {
         listOf(
-            AppItem("1", "Camera", R.drawable.ic_launcher_foreground),
-            AppItem("2", "Settings", R.drawable.ic_launcher_foreground),
-            AppItem("3", "Photos", R.drawable.ic_launcher_foreground),
-            AppItem("4", "Music", R.drawable.ic_launcher_foreground)
+            AppItem("1", "Camera", android.R.drawable.ic_menu_camera),
+            AppItem("2", "Settings", android.R.drawable.ic_menu_preferences),
+            AppItem("3", "Photos", android.R.drawable.ic_menu_gallery),
+            AppItem("4", "Music", android.R.drawable.ic_media_play)
         )
     }
 
@@ -48,7 +48,6 @@ fun AppLibraryScreen() {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // شريط البحث العلوي
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -61,10 +60,8 @@ fun AppLibraryScreen() {
         )
 
         if (searchQuery.isEmpty()) {
-            // عرض المجلدات عند عدم وجود بحث
             SmartFolders(folders = sampleFolders)
         } else {
-            // الجزء المكتمل من القائمة (LazyColumn)
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
