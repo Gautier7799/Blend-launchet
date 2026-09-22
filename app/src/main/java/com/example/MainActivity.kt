@@ -967,7 +967,7 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
             }
         }
 
-        // --- Android: Heavy Dimmed Frosted Scrim for App Drawer ---
+        // --- Android: Soft Translucent Frosted Glass Scrim for App Drawer ---
         AnimatedVisibility(
             visible = isDrawerOpen,
             enter = fadeIn(animationSpec = tween(220)),
@@ -977,8 +977,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        if (isNightTime) Color.Black.copy(alpha = 0.70f)
-                        else Color.Black.copy(alpha = 0.40f)
+                        if (isNightTime) Color.Black.copy(alpha = 0.35f)
+                        else Color.Black.copy(alpha = 0.18f)
                     )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },

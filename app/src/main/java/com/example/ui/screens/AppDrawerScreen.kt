@@ -135,11 +135,13 @@ fun AppDrawer(
         onClose()
     }
 
-    // Frosted Glass styling matching iOS App Library with full Dynamic Day (Jour) and Night (Nuit) adaptation
-    val drawerBgColor = if (isDarkTheme) Color(0xFF0C0E15) else Color(0xFFF2F2F7)
-    val drawerBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.18f) else Color.Black.copy(alpha = 0.08f)
-    val pillBgColor = if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.White
-    val pillBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.08f)
+    // Frosted Glass styling matching iOS App Library with soft translucent glassmorphism
+    // In dark theme, reduce harsh black (was 0xFF0C0E15 solid) to an ultra-soft translucent tint
+    // In light theme, reduce harsh opaque gray (was 0xFFF2F2F7 solid) to a clean frosted translucent white
+    val drawerBgColor = if (isDarkTheme) Color(0xFF141722).copy(alpha = 0.68f) else Color(0xFFF6F8FC).copy(alpha = 0.72f)
+    val drawerBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.65f)
+    val pillBgColor = if (isDarkTheme) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.82f)
+    val pillBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.75f)
     val iconTint = if (isDarkTheme) Color.White.copy(alpha = 0.85f) else Color(0xFF3C3C43)
     val appItemTextColor = if (isDarkTheme) Color.White else Color(0xFF1C1C1E)
     val searchTextColor = if (isDarkTheme) Color.White else Color(0xFF1C1C1E)
@@ -185,13 +187,38 @@ fun AppDrawer(
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         color = drawerBgColor,
         border = BorderStroke(1.2.dp, drawerBorderColor),
-        shadowElevation = 24.dp
+        shadowElevation = 16.dp
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Specular glass highlight gradient for translucent depth
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(260.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = if (isDarkTheme) {
+                                listOf(
+                                    Color.White.copy(alpha = 0.08f),
+                                    Color.White.copy(alpha = 0.02f),
+                                    Color.Transparent
+                                )
+                            } else {
+                                listOf(
+                                    Color.White.copy(alpha = 0.35f),
+                                    Color.White.copy(alpha = 0.10f),
+                                    Color.Transparent
+                                )
+                            }
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
             // Invisible touch dismiss & downward swipe gesture zone (line removed per user request)
             var headerDragY by remember { mutableFloatStateOf(0f) }
             Box(
@@ -375,6 +402,7 @@ fun AppDrawer(
             }
         }
     }
+}
 
     // --- Expanded iOS Category Folder Dialog ---
     expandedCategory?.let { (cat, catApps) ->
@@ -407,8 +435,9 @@ fun IosCategoryBox(
     onAppLongClick: (AppItem) -> Unit,
     onExpandCategory: () -> Unit
 ) {
-    val boxBgColor = if (isDarkTheme) Color(0xFF1C1C1E) else Color.White
-    val boxBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.06f)
+    // Soft translucent frosted card matching iOS App Library category folders
+    val boxBgColor = if (isDarkTheme) Color(0xFF242834).copy(alpha = 0.58f) else Color.White.copy(alpha = 0.70f)
+    val boxBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.85f)
     val currentLocale = java.util.Locale.getDefault().language
     val categoryTitle = if (currentLocale == "ar") category.titleAr else category.titleEn
 
@@ -420,7 +449,7 @@ fun IosCategoryBox(
             shape = RoundedCornerShape(26.dp),
             color = boxBgColor,
             border = BorderStroke(1.dp, boxBorderColor),
-            shadowElevation = if (isDarkTheme) 2.dp else 4.dp,
+            shadowElevation = if (isDarkTheme) 0.dp else 2.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
@@ -758,7 +787,7 @@ fun CategoryFolderDialog(
         else apps.filter { it.label.contains(dialogSearch, ignoreCase = true) }
     }
 
-    val dialogBg = if (isDarkTheme) Color(0xFF161922).copy(alpha = 0.94f) else Color(0xFFF2F5FA).copy(alpha = 0.96f)
+    val dialogBg = if (isDarkTheme) Color(0xFF161922).copy(alpha = 0.78f) else Color(0xFFF2F5FA).copy(alpha = 0.82f)
     val titleColor = if (isDarkTheme) Color.White else Color(0xFF1E2125)
 
     Dialog(onDismissRequest = onDismissRequest) {
