@@ -30,6 +30,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -51,28 +52,29 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// 1. نظام الصفحات الأربع المتكاملة (Today View -> Spotlight Search -> Home Screen -> App Library)
+// 1. المشغل الرئيسي المكون من 4 صفحات تفاعلية
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BlendLauncherMasterApp() {
-    // تبدأ الواجهة من الصفحة الرئيسية (الصفحة index 2)
     val pagerState = rememberPagerState(initialPage = 2, pageCount = { 4 })
 
-    HorizontalPager(
-        state = pagerState,
-        modifier = Modifier.fillMaxSize()
-    ) { page ->
-        when (page) {
-            0 -> TodayWidgetsScreen()      // العنصر 5: صفحة الودجات الجانبية Today View
-            1 -> SpotlightSearchScreen()    // العنصر 2 و 3: شاشة البحث السريع والقائمة العمودية
-            2 -> HomeScreenWithWidgets()   // العنصر 4: الشاشة الرئيسية بالودجات و Dock
-            3 -> AppLibraryRealScreen()     // العنصر 1: مكتبة التطبيقات بالمجلدات الزجاجية
+    Box(modifier = Modifier.fillMaxSize()) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            when (page) {
+                0 -> TodayWidgetsScreen()      // الصفحة 5: ودجات Today View الجانبية
+                1 -> SpotlightSearchScreen()    // الصفحة 2 و 3: البحث السريع Spotlight مع Blur
+                2 -> HomeScreenWithWidgets()   // الصفحة 4: الشاشة الرئيسية بالودجات والـ Dock
+                3 -> AppLibraryRealScreen()     // الصفحة 1: مكتبة التطبيقات App Library
+            }
         }
     }
 }
 
 // ==========================================
-// العنصر 5: صفحة الودجات الجانبية (Today View / Widgets Page)
+// الصفحة 5: Today View (ودجات زجاجية ضبابية)
 // ==========================================
 @Composable
 fun TodayWidgetsScreen() {
@@ -82,18 +84,18 @@ fun TodayWidgetsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF5A758D))
+            .background(Color(0xFF4A6572))
             .statusBarsPadding()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // ودجت الطقس الممتد
+        // ودجت الطقس الممتد بتأثير الضبابية الزجاجية
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(130.dp),
             shape = RoundedCornerShape(24.dp),
-            color = Color(0xFF1B6B93).copy(alpha = 0.85f)
+            color = Color(0xFF1B6B93).copy(alpha = 0.7f)
         ) {
             Row(
                 modifier = Modifier
@@ -103,18 +105,18 @@ fun TodayWidgetsScreen() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Tataouine", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                    Text("Tataouine", color = Color.White.copy(alpha = 0.9f), fontSize = 14.sp)
                     Text("22°", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold)
                     Text("Clear Sky • H:22° L:17°", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
                 }
             }
         }
 
-        // ودجت اقتراحات التطبيقات (Shorcuts Widget)
+        // ودجت الاقتراحات السريعة الزجاجي (Frosted Glass)
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
-            color = Color.White.copy(alpha = 0.45f)
+            color = Color.White.copy(alpha = 0.35f)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
@@ -152,7 +154,7 @@ fun TodayWidgetsScreen() {
 }
 
 // ==========================================
-// العنصر 4: الشاشة الرئيسية بالودجات والشريط السفلي
+// الصفحة 4: الشاشة الرئيسية (Home Screen)
 // ==========================================
 @Composable
 fun HomeScreenWithWidgets() {
@@ -163,7 +165,7 @@ fun HomeScreenWithWidgets() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF8BA2B5))
+            .background(Color(0xFF7A92A3))
             .statusBarsPadding()
             .padding(16.dp),
         verticalArrangement = Arrangement.SpaceBetween
@@ -175,12 +177,13 @@ fun HomeScreenWithWidgets() {
                     .height(135.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // ودجت الطقس
                 Surface(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
                     shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFF1B6B93).copy(alpha = 0.85f)
+                    color = Color(0xFF1B6B93).copy(alpha = 0.75f)
                 ) {
                     Column(
                         modifier = Modifier.padding(14.dp),
@@ -192,12 +195,13 @@ fun HomeScreenWithWidgets() {
                     }
                 }
 
+                // ودجت البطارية الزجاجي
                 Surface(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
                     shape = RoundedCornerShape(24.dp),
-                    color = Color.White.copy(alpha = 0.85f)
+                    color = Color.White.copy(alpha = 0.45f)
                 ) {
                     Row(
                         modifier = Modifier
@@ -233,6 +237,7 @@ fun HomeScreenWithWidgets() {
             }
         }
 
+        // الشريط السفلي الزجاجي (Frosted Glass Dock)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -281,7 +286,7 @@ fun HomeScreenAppItem(app: RealAppModel, onClick: () -> Unit) {
 }
 
 // ==========================================
-// العنصر 2 و 3: البحث السريع Spotlight Search
+// الصفحة 2 و 3: شاشة البحث السريع الضبابية (Spotlight with Blur)
 // ==========================================
 @Composable
 fun SpotlightSearchScreen() {
@@ -294,10 +299,16 @@ fun SpotlightSearchScreen() {
         else installedApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
     }
 
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF3F51B5).copy(alpha = 0.2f))
+            .blur(16.dp) // تطبيق تأثير الـ Blur على خلفية شاشة البحث
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF6B8A99))
             .statusBarsPadding()
             .padding(16.dp)
     ) {
@@ -310,7 +321,7 @@ fun SpotlightSearchScreen() {
             singleLine = true,
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.White.copy(alpha = 0.85f),
-                unfocusedContainerColor = Color.White.copy(alpha = 0.7f),
+                unfocusedContainerColor = Color.White.copy(alpha = 0.65f),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             ),
@@ -330,7 +341,7 @@ fun SpotlightSearchScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.2f))
+                        .background(Color.White.copy(alpha = 0.25f))
                         .clickable { launchApp(context, app.packageName) }
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -351,7 +362,7 @@ fun SpotlightSearchScreen() {
 }
 
 // ==========================================
-// العنصر 1: مكتبة التطبيقات App Library
+// الصفحة 1: مكتبة التطبيقات App Library (مجلدات زجاجية)
 // ==========================================
 @Composable
 fun AppLibraryRealScreen() {
@@ -422,7 +433,7 @@ fun RealFolderCard(
                 .fillMaxWidth()
                 .aspectRatio(1f),
             shape = RoundedCornerShape(28.dp),
-            color = Color.White.copy(alpha = 0.45f)
+            color = Color.White.copy(alpha = 0.45f) // المجلد الزجاجي الشفاف
         ) {
             Column(
                 modifier = Modifier
@@ -479,7 +490,7 @@ fun RealAppIconSlot(
 }
 
 // ==========================================
-// إدارة التطبيقات والأذونات
+// نموذج وقراءة التطبيقات من نظام الأندرويد
 // ==========================================
 data class RealAppModel(
     val packageName: String,
