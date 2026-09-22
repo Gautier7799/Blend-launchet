@@ -135,10 +135,9 @@ fun AppDrawer(
         onClose()
     }
 
-    // Frosted Glass styling matching iOS App Library with soft translucent glassmorphism
-    // In dark theme, reduce harsh black (was 0xFF0C0E15 solid) to an ultra-soft translucent tint
-    // In light theme, reduce harsh opaque gray (was 0xFFF2F2F7 solid) to a clean frosted translucent white
-    val drawerBgColor = if (isDarkTheme) Color(0xFF141722).copy(alpha = 0.68f) else Color(0xFFF6F8FC).copy(alpha = 0.72f)
+    // Frosted Glass styling matching iOS App Library with opaque blurred glassmorphism
+    // Solid background completely obscures home screen icons behind as requested: "اجعل لون الدرج التطبيقات flou خلفية حتى لا تظهر يقونات الواجهة الرئيسية"
+    val drawerBgColor = if (isDarkTheme) Color(0xFF141722) else Color(0xFFF6F8FC)
     val drawerBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.65f)
     val pillBgColor = if (isDarkTheme) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.82f)
     val pillBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.75f)

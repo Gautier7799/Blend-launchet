@@ -865,45 +865,8 @@ fun ReorderableWidgetWrapper(
         // Main Widget Content
         content()
 
-        // iOS Style Delete Badge & Drag/Reorder Handles in Edit Mode
+        // iOS Style Drag/Reorder Handles in Edit Mode
         if (isEditMode) {
-            // Delete Badge (-) at Top End
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 6.dp, y = (-8).dp)
-                    .size(48.dp)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "Supprimer le widget $title"
-                    }
-                    .clickable(
-                        role = Role.Button,
-                        onClickLabel = "Supprimer $title",
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onDelete()
-                        }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFFEF4444),
-                    shadowElevation = 3.dp,
-                    modifier = Modifier.size(26.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Remove,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-
             // Quick Up/Down Reorder Pills & Drag Grip indicator
             Surface(
                 modifier = Modifier
@@ -979,6 +942,7 @@ fun QuickControlsCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val isDark = isSystemInDarkTheme()
 
     // Torch / Flashlight state
@@ -1089,10 +1053,14 @@ fun QuickControlsCard(
                     modifier = Modifier.weight(1f),
                     onClick = {
                         try {
+                            if (settings.hapticFeedback) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
                             val camId = cameraManager?.cameraIdList?.firstOrNull()
                             if (camId != null) {
-                                isTorchOn = !isTorchOn
-                                cameraManager.setTorchMode(camId, isTorchOn)
+                                val nextState = !isTorchOn
+                                cameraManager.setTorchMode(camId, nextState)
+                                isTorchOn = nextState
                             }
                         } catch (_: Exception) {}
                     }
@@ -1112,6 +1080,9 @@ fun QuickControlsCard(
                     activeColor = Color(0xFF10B981),
                     modifier = Modifier.weight(1f),
                     onClick = {
+                        if (settings.hapticFeedback) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
                         try {
                             if (audioManager != null) {
                                 val nextMode = when (ringerMode) {
@@ -1141,11 +1112,20 @@ fun QuickControlsCard(
                     activeColor = Color(0xFF3B82F6),
                     modifier = Modifier.weight(1f),
                     onClick = {
+                        if (settings.hapticFeedback) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
                         try {
                             context.startActivity(Intent(Settings.ACTION_WIFI_SETTINGS).apply {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
                             })
-                        } catch (_: Exception) {}
+                        } catch (_: Exception) {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_SETTINGS).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                })
+                            } catch (_: Exception) {}
+                        }
                     }
                 )
 
@@ -1158,11 +1138,20 @@ fun QuickControlsCard(
                     activeColor = Color(0xFF8B5CF6),
                     modifier = Modifier.weight(1f),
                     onClick = {
+                        if (settings.hapticFeedback) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
                         try {
                             context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
                             })
-                        } catch (_: Exception) {}
+                        } catch (_: Exception) {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_SETTINGS).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                })
+                            } catch (_: Exception) {}
+                        }
                     }
                 )
             }

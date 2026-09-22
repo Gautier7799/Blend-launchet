@@ -977,8 +977,8 @@ fun BlendLauncherScreen(viewModel: LauncherViewModel) {
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        if (isNightTime) Color.Black.copy(alpha = 0.35f)
-                        else Color.Black.copy(alpha = 0.18f)
+                        if (isNightTime) Color.Black.copy(alpha = 0.65f)
+                        else Color.Black.copy(alpha = 0.40f)
                     )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
